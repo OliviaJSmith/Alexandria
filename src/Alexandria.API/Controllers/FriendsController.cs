@@ -11,19 +11,13 @@ namespace Alexandria.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class FriendsController : ControllerBase
+public class FriendsController : BaseController
 {
     private readonly AlexandriaDbContext _context;
 
     public FriendsController(AlexandriaDbContext context)
     {
         _context = context;
-    }
-
-    private int GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(userIdClaim, out var userId) ? userId : 0;
     }
 
     [HttpGet]

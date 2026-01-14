@@ -1,8 +1,9 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Book, Library, LibraryBook, Loan, Friend } from '../types';
+import { config } from '../config';
 
-const API_BASE_URL = 'http://localhost:5000/api'; // Update with your actual API URL
+const API_BASE_URL = config.api.baseUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,

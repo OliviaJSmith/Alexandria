@@ -11,7 +11,7 @@ namespace Alexandria.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class LibrariesController : ControllerBase
+public class LibrariesController : BaseController
 {
     private readonly AlexandriaDbContext _context;
     private readonly ILogger<LibrariesController> _logger;
@@ -20,12 +20,6 @@ public class LibrariesController : ControllerBase
     {
         _context = context;
         _logger = logger;
-    }
-
-    private int GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(userIdClaim, out var userId) ? userId : 0;
     }
 
     [HttpGet]

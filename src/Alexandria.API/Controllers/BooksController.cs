@@ -22,8 +22,15 @@ public class BooksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BookDto>>> SearchBooks([FromQuery] BookSearchRequest request)
+    public async Task<ActionResult<IEnumerable<BookDto>>> SearchBooks(
+        [FromQuery] BookSearchRequest request,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
+        if (pageSize > 100) pageSize = 100;
+        if (pageSize < 1) pageSize = 50;
+        if (page < 1) page = 1;
+
         var query = _context.Books.AsQueryable();
 
         if (!string.IsNullOrEmpty(request.Query))
@@ -54,7 +61,10 @@ public class BooksController : ControllerBase
             query = query.Where(b => b.PublishedYear == request.PublishedYear);
         }
 
-        var books = await query.Take(50).ToListAsync();
+        var books = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
 
         return Ok(books.Select(b => new BookDto
         {
