@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Alexandria.API/Alexandria.API.csproj" />
+    <Project Path="src/Alexandria.AppHost/Alexandria.AppHost.csproj" />
+  </Folder>
+</Solution>
