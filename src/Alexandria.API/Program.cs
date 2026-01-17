@@ -4,14 +4,29 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
+// Check if running as migration runner
+if (args.Length > 0 && args[0] == "MigrationRunner")
+{
+    return await RunMigrations(args);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
 
 // Configure PostgreSQL database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+var connectionString = builder.Configuration.GetConnectionString("alexandria") 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=alexandria;Username=postgres;Password=postgres";
+
+// Ensure SSL is disabled for local development (Docker container doesn't have SSL configured)
+if (!connectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase) && 
+    !connectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase))
+{
+    connectionString += ";SSL Mode=Disable";
+}
+
 builder.Services.AddDbContext<AlexandriaDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -81,3 +96,64 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+return 0; // Normal exit code
+
+// Migration runner method
+static async Task<int> RunMigrations(string[] args)
+{
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Configure PostgreSQL database
+    var connectionString = builder.Configuration.GetConnectionString("alexandria") 
+        ?? builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Host=localhost;Database=alexandria;Username=postgres;Password=postgres";
+
+    // Ensure SSL is disabled for local development
+    if (!connectionString.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase) && 
+        !connectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase))
+    {
+        connectionString += ";SSL Mode=Disable";
+    }
+
+    builder.Services.AddDbContext<AlexandriaDbContext>(options =>
+        options.UseNpgsql(connectionString));
+
+    var app = builder.Build();
+
+    // Apply migrations
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
+        var retryCount = 0;
+        const int maxRetries = 10;
+        
+        while (retryCount < maxRetries)
+        {
+            try
+            {
+                logger.LogInformation("🔄 Applying database migrations...");
+                await db.Database.MigrateAsync();
+                logger.LogInformation("✅ Database migrations applied successfully.");
+                return 0; // Success
+            }
+            catch (Exception ex)
+            {
+                retryCount++;
+                if (retryCount >= maxRetries)
+                {
+                    logger.LogError(ex, "❌ Failed to apply migrations after {RetryCount} attempts.", retryCount);
+                    return 1; // Failure
+                }
+                
+                logger.LogWarning("⚠️ Failed to apply migrations (attempt {RetryCount}/{MaxRetries}). Retrying in 2 seconds...", 
+                    retryCount, maxRetries);
+                await Task.Delay(2000);
+            }
+        }
+    }
+
+    return 0;
+}
