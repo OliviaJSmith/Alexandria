@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { setAuthToken } from '../services/api';
 
 export default function LoginScreen({ navigation }: any) {
@@ -29,13 +29,16 @@ export default function LoginScreen({ navigation }: any) {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#888"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
         
-        <Button title="Login with Google" onPress={handleLogin} />
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Login with Google</Text>
+        </TouchableOpacity>
         
         <Text style={styles.note}>
           Note: Google authentication will be configured with your credentials
@@ -48,20 +51,21 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#121212',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    overflow: 'visible',
   },
   title: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 18,
-    color: '#666',
+    color: '#B0B0B0',
     marginBottom: 40,
   },
   form: {
@@ -69,18 +73,30 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: '#2C2C2C',
     padding: 15,
     borderRadius: 8,
     marginBottom: 20,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#3C3C3C',
+    color: '#FFFFFF',
   },
   note: {
     marginTop: 20,
     textAlign: 'center',
-    color: '#999',
+    color: '#888',
     fontSize: 12,
+  },
+  button: {
+    backgroundColor: '#E5A823',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

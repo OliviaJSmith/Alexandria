@@ -1,7 +1,8 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LoginScreen from '../screens/LoginScreen';
 import BookSearchScreen from '../screens/BookSearchScreen';
 import LibrariesScreen from '../screens/LibrariesScreen';
@@ -11,12 +12,33 @@ import ImageSearchScreen from '../screens/ImageSearchScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const CustomDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: '#E5A823',
+    background: '#121212',
+    card: '#1E1E1E',
+    text: '#FFFFFF',
+    border: '#2C2C2C',
+  },
+};
+
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: '#E5A823',
+        tabBarInactiveTintColor: '#888',
+        tabBarStyle: { 
+          backgroundColor: '#1E1E1E', 
+          borderTopColor: '#2C2C2C',
+          paddingBottom: insets.bottom,
+        },
+        headerStyle: { backgroundColor: '#1E1E1E' },
+        headerTintColor: '#FFFFFF',
         headerShown: true,
       }}
     >
@@ -41,11 +63,13 @@ function MainTabs() {
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={CustomDarkTheme}>
       <Stack.Navigator
         initialRouteName="Login"
         screenOptions={{
           headerShown: false,
+          headerStyle: { backgroundColor: '#1E1E1E' },
+          headerTintColor: '#FFFFFF',
         }}
       >
         <Stack.Screen 

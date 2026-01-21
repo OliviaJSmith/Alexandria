@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { searchBooksByImage } from '../services/api';
 import { Book } from '../types';
@@ -77,14 +77,20 @@ export default function ImageSearchScreen() {
       )}
 
       <View style={styles.buttonContainer}>
-        <Button title="Choose from Library" onPress={pickImage} />
-        <Button title="Take Photo" onPress={takePhoto} />
+        <TouchableOpacity style={styles.button} onPress={pickImage}>
+          <Text style={styles.buttonText}>Choose from Library</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={takePhoto}>
+          <Text style={styles.buttonText}>Take Photo</Text>
+        </TouchableOpacity>
         {imageUri && (
-          <Button 
-            title={loading ? "Searching..." : "Search"} 
-            onPress={handleSearch} 
+          <TouchableOpacity 
+            style={[styles.button, styles.searchButton, loading && styles.buttonDisabled]} 
+            onPress={handleSearch}
             disabled={loading}
-          />
+          >
+            <Text style={styles.buttonText}>{loading ? "Searching..." : "Search"}</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -98,18 +104,19 @@ export default function ImageSearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#121212',
     padding: 20,
+    overflow: 'visible',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#B0B0B0',
     marginBottom: 20,
   },
   image: {
@@ -124,7 +131,25 @@ const styles = StyleSheet.create({
   note: {
     marginTop: 20,
     textAlign: 'center',
-    color: '#999',
+    color: '#888',
     fontSize: 12,
+  },
+  button: {
+    backgroundColor: '#E5A823',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  searchButton: {
+    backgroundColor: '#C4891E',
+  },
+  buttonDisabled: {
+    backgroundColor: '#8B7355',
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

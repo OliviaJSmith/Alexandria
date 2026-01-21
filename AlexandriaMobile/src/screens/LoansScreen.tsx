@@ -109,54 +109,55 @@ export default function LoansScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#121212',
+    overflow: 'visible',
   },
   filterBar: {
     flexDirection: 'row',
     padding: 10,
-    backgroundColor: 'white',
+    backgroundColor: '#1E1E1E',
     justifyContent: 'space-around',
   },
   filterButton: {
     paddingVertical: 8,
     paddingHorizontal: 20,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#2C2C2C',
   },
   filterButtonActive: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#E5A823',
   },
   filterText: {
-    color: '#666',
+    color: '#888',
     fontWeight: '500',
   },
   filterTextActive: {
-    color: 'white',
+    color: '#1A1A1A',
     fontWeight: '500',
   },
   listContent: {
     padding: 15,
   },
   loanCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#1E1E1E',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
   bookTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   bookAuthor: {
     fontSize: 14,
-    color: '#666',
+    color: '#B0B0B0',
     marginBottom: 10,
   },
   loanInfo: {
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 12,
-    color: '#666',
+    color: '#B0B0B0',
     marginBottom: 3,
   },
   statusBadge: {
