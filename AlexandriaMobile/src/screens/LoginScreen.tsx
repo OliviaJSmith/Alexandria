@@ -1,23 +1,55 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { setAuthToken } from '../services/api';
+import { config } from '../config';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }: any) {
-  const [email, setEmail] = useState('');
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    //androidClientId: config.google.androidClientId,
+    //iosClientId: config.google.iosClientId,
+    webClientId: config.google.webClientId,
+  });
+
+  useEffect(() => {
+    handleSignInResponse();
+  }, [response]);
+
+  const handleSignInResponse = async () => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        // Store the access token
+        await setAuthToken(authentication.accessToken);
+        
+        // Optionally fetch user info
+        try {
+          const userInfoResponse = await fetch(
+            'https://www.googleapis.com/userinfo/v2/me',
+            { headers: { Authorization: `Bearer ${authentication.accessToken}` } }
+          );
+          const userInfo = await userInfoResponse.json();
+          console.log('User info:', userInfo);
+        } catch (error) {
+          console.log('Failed to fetch user info:', error);
+        }
+
+        navigation.replace('Main');
+      }
+    } else if (response?.type === 'error') {
+      Alert.alert('Error', 'Google sign-in failed. Please try again.');
+    }
+  };
 
   const handleLogin = async () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email');
+    if (!request) {
+      Alert.alert('Error', 'Google Sign-In is not ready yet. Please try again.');
       return;
     }
-
-    // Placeholder for actual Google Auth implementation
-    // For now, just store a dummy token
-    const dummyToken = 'dummy-jwt-token-' + Date.now();
-    await setAuthToken(dummyToken);
-    
-    Alert.alert('Success', 'Logged in successfully!');
-    navigation.replace('Main');
+    await promptAsync();
   };
 
   return (
@@ -26,22 +58,20 @@ export default function LoginScreen({ navigation }: any) {
       <Text style={styles.subtitle}>Your Home Library</Text>
       
       <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login with Google</Text>
+        <TouchableOpacity 
+          style={[styles.button, !request && styles.buttonDisabled]} 
+          onPress={handleLogin}
+          disabled={!request}
+        >
+          {!request ? (
+            <ActivityIndicator color="#1A1A1A" />
+          ) : (
+            <Text style={styles.buttonText}>Sign in with Google</Text>
+          )}
         </TouchableOpacity>
         
         <Text style={styles.note}>
-          Note: Google authentication will be configured with your credentials
+          Sign in to sync your library across devices
         </Text>
       </View>
     </View>
@@ -72,16 +102,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
   },
-  input: {
-    backgroundColor: '#2C2C2C',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#3C3C3C',
-    color: '#FFFFFF',
-  },
   note: {
     marginTop: 20,
     textAlign: 'center',
@@ -93,6 +113,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#1A1A1A',

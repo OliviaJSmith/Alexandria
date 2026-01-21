@@ -1,8 +1,10 @@
 import React from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, useNavigation, CommonActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, Text, StyleSheet, Alert, Platform } from 'react-native';
+import { removeAuthToken } from '../services/api';
 import LoginScreen from '../screens/LoginScreen';
 import BookSearchScreen from '../screens/BookSearchScreen';
 import LibrariesScreen from '../screens/LibrariesScreen';
@@ -24,6 +26,55 @@ const CustomDarkTheme = {
   },
 };
 
+const SignOutButton = () => {
+  const navigation = useNavigation();
+  
+  const performSignOut = async () => {
+    await removeAuthToken();
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      })
+    );
+  };
+  
+  const handleSignOut = () => {
+    console.log('Sign out button pressed');
+    
+    if (Platform.OS === 'web') {
+      // Use browser confirm for web
+      if (window.confirm('Are you sure you want to sign out?')) {
+        performSignOut();
+      }
+    } else {
+      // Use Alert for native platforms
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign Out',
+            style: 'destructive',
+            onPress: performSignOut,
+          },
+        ]
+      );
+    }
+  };
+
+  return (
+    <Pressable 
+      onPress={handleSignOut} 
+      style={styles.signOutButton}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Text style={styles.signOutText}>Sign Out</Text>
+    </Pressable>
+  );
+};
+
 function MainTabs() {
   const insets = useSafeAreaInsets();
   
@@ -40,6 +91,7 @@ function MainTabs() {
         headerStyle: { backgroundColor: '#1E1E1E' },
         headerTintColor: '#FFFFFF',
         headerShown: true,
+        headerRight: () => <SignOutButton />,
       }}
     >
       <Tab.Screen 
@@ -92,3 +144,20 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  signOutButton: {
+    marginRight: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signOutText: {
+    color: '#E5A823',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
