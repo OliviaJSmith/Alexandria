@@ -1,4 +1,5 @@
 using Alexandria.API.Data;
+using Alexandria.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -9,8 +10,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
+// Register application services
+builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<ILibraryService, LibraryService>();
+builder.Services.AddScoped<ILoanService, LoanService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
+
 // Configure PostgreSQL database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=alexandria;Username=postgres;Password=postgres";
 builder.Services.AddDbContext<AlexandriaDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -47,7 +54,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // Add CORS
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:8081", "http://localhost:19006" }; // Default to Expo dev ports
 
 builder.Services.AddCors(options =>

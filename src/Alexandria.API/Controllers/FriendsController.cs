@@ -1,54 +1,20 @@
-using Alexandria.API.Data;
 using Alexandria.API.DTOs;
-using Alexandria.API.Models;
+using Alexandria.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace Alexandria.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class FriendsController : BaseController
+public class FriendsController(IFriendService friendService) : BaseController
 {
-    private readonly AlexandriaDbContext _context;
-
-    public FriendsController(AlexandriaDbContext context)
-    {
-        _context = context;
-    }
-
     [HttpGet]
     public async Task<ActionResult<IEnumerable<FriendDto>>> GetFriends()
     {
         var userId = GetCurrentUserId();
-        
-        var friendships = await _context.Friendships
-            .Include(f => f.Requester)
-            .Include(f => f.Addressee)
-            .Where(f => (f.RequesterId == userId || f.AddresseeId == userId) 
-                && f.Status == FriendshipStatus.Accepted)
-            .ToListAsync();
-
-        var friends = friendships.Select(f =>
-        {
-            var friend = f.RequesterId == userId ? f.Addressee : f.Requester;
-            return new FriendDto
-            {
-                Id = f.Id,
-                Friend = new UserDto
-                {
-                    Id = friend.Id,
-                    Email = friend.Email,
-                    Name = friend.Name,
-                    ProfilePictureUrl = friend.ProfilePictureUrl
-                },
-                CreatedAt = f.CreatedAt
-            };
-        });
-
+        var friends = await friendService.GetFriendsAsync(userId);
         return Ok(friends);
     }
 
@@ -56,40 +22,16 @@ public class FriendsController : BaseController
     public async Task<ActionResult> SendFriendRequest(int friendId)
     {
         var userId = GetCurrentUserId();
+        var result = await friendService.SendFriendRequestAsync(userId, friendId);
 
-        if (userId == friendId)
+        if (!result.IsSuccess)
         {
-            return BadRequest("Cannot send friend request to yourself");
+            return result.Error switch
+            {
+                "User not found" => NotFound(result.Error),
+                _ => BadRequest(result.Error)
+            };
         }
-
-        var friend = await _context.Users.FindAsync(friendId);
-        if (friend == null)
-        {
-            return NotFound("User not found");
-        }
-
-        // Check if friendship already exists
-        var existingFriendship = await _context.Friendships
-            .FirstOrDefaultAsync(f => 
-                (f.RequesterId == userId && f.AddresseeId == friendId) ||
-                (f.RequesterId == friendId && f.AddresseeId == userId));
-
-        if (existingFriendship != null)
-        {
-            return BadRequest("Friendship request already exists");
-        }
-
-        var friendship = new Friendship
-        {
-            RequesterId = userId,
-            AddresseeId = friendId,
-            Status = FriendshipStatus.Pending,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _context.Friendships.Add(friendship);
-        await _context.SaveChangesAsync();
 
         return Ok();
     }
@@ -98,21 +40,17 @@ public class FriendsController : BaseController
     public async Task<ActionResult> AcceptFriendRequest(int friendshipId)
     {
         var userId = GetCurrentUserId();
-        var friendship = await _context.Friendships.FindAsync(friendshipId);
+        var result = await friendService.AcceptFriendRequestAsync(userId, friendshipId);
 
-        if (friendship == null)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            return result.Error switch
+            {
+                "Not found" => NotFound(),
+                "Forbidden" => Forbid(),
+                _ => BadRequest(result.Error)
+            };
         }
-
-        if (friendship.AddresseeId != userId)
-        {
-            return Forbid();
-        }
-
-        friendship.Status = FriendshipStatus.Accepted;
-        friendship.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
 
         return Ok();
     }
@@ -121,20 +59,17 @@ public class FriendsController : BaseController
     public async Task<ActionResult> RemoveFriend(int friendshipId)
     {
         var userId = GetCurrentUserId();
-        var friendship = await _context.Friendships.FindAsync(friendshipId);
+        var result = await friendService.RemoveFriendAsync(userId, friendshipId);
 
-        if (friendship == null)
+        if (!result.IsSuccess)
         {
-            return NotFound();
+            return result.Error switch
+            {
+                "Not found" => NotFound(),
+                "Forbidden" => Forbid(),
+                _ => BadRequest(result.Error)
+            };
         }
-
-        if (friendship.RequesterId != userId && friendship.AddresseeId != userId)
-        {
-            return Forbid();
-        }
-
-        _context.Friendships.Remove(friendship);
-        await _context.SaveChangesAsync();
 
         return NoContent();
     }
