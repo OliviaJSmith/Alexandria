@@ -27,9 +27,15 @@ export default {
       favicon: "./assets/favicon.png",
       bundler: "metro"
     },
+    plugins: [
+      "expo-web-browser"
+    ],
+    scheme: "alexandria",
     extra: {
       apiBaseUrl: process.env.API_BASE_URL || "http://localhost:5000/api",
-      googleClientId: process.env.GOOGLE_CLIENT_ID || ""
+      googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID || "",
+      googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID || "",
+      googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID || "",
     }
   }
 };

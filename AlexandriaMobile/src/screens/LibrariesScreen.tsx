@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { getLibraries, getLibraryBooks } from '../services/api';
 import { Library, LibraryBook } from '../types';
 
@@ -62,7 +62,9 @@ export default function LibrariesScreen({ navigation }: any) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Button title="← Back" onPress={() => setSelectedLibrary(null)} />
+          <TouchableOpacity style={styles.backButton} onPress={() => setSelectedLibrary(null)}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>{selectedLibrary.name}</Text>
         </View>
         <FlatList
@@ -78,14 +80,18 @@ export default function LibrariesScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.toggleBar}>
-        <Button
-          title="My Libraries"
+        <TouchableOpacity 
+          style={[styles.toggleButton, !showPublic && styles.toggleButtonActive]}
           onPress={() => setShowPublic(false)}
-        />
-        <Button
-          title="Public Libraries"
+        >
+          <Text style={[styles.toggleText, !showPublic && styles.toggleTextActive]}>My Libraries</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.toggleButton, showPublic && styles.toggleButtonActive]}
           onPress={() => setShowPublic(true)}
-        />
+        >
+          <Text style={[styles.toggleText, showPublic && styles.toggleTextActive]}>Public Libraries</Text>
+        </TouchableOpacity>
       </View>
       <FlatList
         data={libraries}
@@ -100,17 +106,18 @@ export default function LibrariesScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#121212',
+    overflow: 'visible',
   },
   toggleBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     padding: 15,
-    backgroundColor: 'white',
+    backgroundColor: '#1E1E1E',
   },
   header: {
     padding: 15,
-    backgroundColor: 'white',
+    backgroundColor: '#1E1E1E',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 15,
@@ -118,55 +125,84 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   listContent: {
     padding: 15,
   },
   libraryCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#1E1E1E',
     padding: 20,
     borderRadius: 8,
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
   libraryName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   libraryType: {
     fontSize: 14,
-    color: '#666',
+    color: '#B0B0B0',
   },
   bookCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#1E1E1E',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
   bookTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   bookAuthor: {
     fontSize: 14,
-    color: '#666',
+    color: '#B0B0B0',
     marginBottom: 3,
   },
   bookStatus: {
     fontSize: 12,
-    color: '#999',
+    color: '#888',
+  },
+  backButton: {
+    backgroundColor: '#C4891E',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  toggleButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#2C2C2C',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#E5A823',
+  },
+  toggleText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  toggleTextActive: {
+    color: '#1A1A1A',
   },
 });
