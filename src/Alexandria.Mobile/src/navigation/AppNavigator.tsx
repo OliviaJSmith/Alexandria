@@ -9,6 +9,7 @@ import BookSearchScreen from '../screens/BookSearchScreen';
 import LibrariesScreen from '../screens/LibrariesScreen';
 import LoansScreen from '../screens/LoansScreen';
 import ImageSearchScreen from '../screens/ImageSearchScreen';
+import BookshelfScanScreen from '../screens/BookshelfScanScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -97,7 +98,15 @@ export default function AppNavigator() {
                 component={ImageSearchScreen}
                 options={{
                   headerShown: true,
-                  title: 'Search by Image'
+                  title: 'Scan a Book'
+                }}
+              />
+              <Stack.Screen
+                name="BookshelfScan"
+                component={BookshelfScanScreen}
+                options={{
+                  headerShown: true,
+                  title: 'Scan Bookshelf'
                 }}
               />
             </Stack.Navigator>

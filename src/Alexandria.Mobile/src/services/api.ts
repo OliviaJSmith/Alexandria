@@ -1,6 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Book, Library, LibraryBook, Loan, Friend } from '../types';
+import { Book, Library, LibraryBook, Loan, Friend, BookPreview, ConfirmBooksRequest, ConfirmBooksResult } from '../types';
 import { config } from '../config';
 
 const API_BASE_URL = config.api.baseUrl;
@@ -64,8 +64,8 @@ export const searchBooksByImage = async (imageUri: string): Promise<Book[]> => {
 
 // Libraries API
 export const getLibraries = async (isPublic?: boolean): Promise<Library[]> => {
-  const response = await api.get('/libraries', { 
-    params: isPublic !== undefined ? { isPublic } : {} 
+  const response = await api.get('/libraries', {
+    params: isPublic !== undefined ? { isPublic } : {}
   });
   return response.data;
 };
@@ -142,6 +142,48 @@ export const acceptFriendRequest = async (friendshipId: number): Promise<void> =
 
 export const removeFriend = async (friendshipId: number): Promise<void> => {
   await api.delete(`/friends/${friendshipId}`);
+};
+
+// Book Scanning API
+export const scanSingleBook = async (imageUri: string): Promise<BookPreview> => {
+  const formData = new FormData();
+  formData.append('image', {
+    uri: imageUri,
+    type: 'image/jpeg',
+    name: 'book-image.jpg',
+  } as any);
+
+  const response = await api.post('/books/scan-single', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+export const scanBookshelf = async (imageUri: string): Promise<BookPreview[]> => {
+  const formData = new FormData();
+  formData.append('image', {
+    uri: imageUri,
+    type: 'image/jpeg',
+    name: 'bookshelf-image.jpg',
+  } as any);
+
+  const response = await api.post('/books/scan-bookshelf', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+export const lookupBookByIsbn = async (isbn: string): Promise<BookPreview> => {
+  const response = await api.get(`/books/lookup/${encodeURIComponent(isbn)}`);
+  return response.data;
+};
+
+export const confirmBooksToLibrary = async (
+  libraryId: number,
+  request: ConfirmBooksRequest
+): Promise<ConfirmBooksResult> => {
+  const response = await api.post(`/libraries/${libraryId}/confirm-books`, request);
+  return response.data;
 };
 
 // Authentication

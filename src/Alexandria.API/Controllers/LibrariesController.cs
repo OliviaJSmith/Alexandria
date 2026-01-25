@@ -1,5 +1,6 @@
 using Alexandria.API.DTOs;
 using Alexandria.API.Services;
+using Alexandria.API.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +9,10 @@ namespace Alexandria.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class LibrariesController(ILibraryService libraryService, ILogger<LibrariesController> logger) : BaseController
+public class LibrariesController(
+    ILibraryService libraryService,
+    IBookService bookService,
+    ILogger<LibrariesController> logger) : BaseController
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<LibraryDto>>> GetLibraries([FromQuery] bool? isPublic = null)
@@ -80,5 +84,91 @@ public class LibrariesController(ILibraryService libraryService, ILogger<Librari
             return NotFound("Book not found in library");
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Confirms and adds scanned books to a library.
+    /// Creates new book records if they don't exist, then adds them to the library.
+    /// </summary>
+    [HttpPost("{id}/confirm-books")]
+    public async Task<ActionResult<ConfirmBooksResult>> ConfirmBooks(int id, ConfirmBooksRequest request)
+    {
+        var userId = GetCurrentUserId();
+
+        if (!await libraryService.UserOwnsLibraryAsync(id, userId))
+            return Forbid();
+
+        var result = new ConfirmBooksResult();
+
+        foreach (var preview in request.Books)
+        {
+            var confirmedResult = new ConfirmedBookResult { Title = preview.Title };
+
+            try
+            {
+                int bookId;
+
+                // If the book already exists in our database, use that ID
+                if (preview.ExistingBookId.HasValue)
+                {
+                    bookId = preview.ExistingBookId.Value;
+                    confirmedResult.WasCreated = false;
+                }
+                else
+                {
+                    // Create a new book record
+                    var createRequest = new CreateBookRequest
+                    {
+                        Title = preview.Title,
+                        Author = preview.Author,
+                        Isbn = !string.IsNullOrEmpty(preview.Isbn)
+                            ? IsbnHelper.NormalizeToIsbn13(preview.Isbn) ?? preview.Isbn
+                            : null,
+                        Publisher = preview.Publisher,
+                        PublishedYear = preview.PublishedYear,
+                        Description = preview.Description,
+                        CoverImageUrl = preview.CoverImageUrl,
+                        Genre = preview.Genre,
+                        PageCount = preview.PageCount
+                    };
+
+                    var createdBook = await bookService.CreateBookAsync(createRequest);
+                    bookId = createdBook.Id;
+                    confirmedResult.WasCreated = true;
+                }
+
+                confirmedResult.BookId = bookId;
+
+                // Add book to library
+                var addRequest = new AddBookToLibraryRequest { BookId = bookId };
+                var libraryBook = await libraryService.AddBookToLibraryAsync(id, userId, addRequest);
+
+                if (libraryBook is not null)
+                {
+                    confirmedResult.LibraryBookId = libraryBook.Id;
+                    confirmedResult.AddedToLibrary = true;
+                    result.SuccessCount++;
+                }
+                else
+                {
+                    confirmedResult.Error = "Failed to add book to library";
+                    result.FailedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error confirming book '{Title}'", preview.Title);
+                confirmedResult.Error = "An error occurred while processing this book";
+                result.FailedCount++;
+            }
+
+            result.Results.Add(confirmedResult);
+        }
+
+        logger.LogInformation(
+            "Confirmed {SuccessCount} books (failed: {FailedCount}) to library {LibraryId}",
+            result.SuccessCount, result.FailedCount, id);
+
+        return Ok(result);
     }
 }

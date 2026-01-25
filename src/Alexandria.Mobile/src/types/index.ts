@@ -67,3 +67,49 @@ export interface Friend {
   friend: User;
   createdAt: string;
 }
+
+// Book scanning types
+export enum BookSource {
+  Local = 0,
+  OpenLibrary = 1,
+  GoogleBooks = 2,
+  OcrText = 3
+}
+
+export interface BookPreview {
+  existingBookId?: number;
+  title: string;
+  author?: string;
+  isbn?: string;
+  publisher?: string;
+  publishedYear?: number;
+  description?: string;
+  coverImageUrl?: string;
+  genre?: string;
+  pageCount?: number;
+  source: BookSource;
+  confidence: number;
+  externalId?: string;
+  // UI state for bulk edit
+  selected?: boolean;
+}
+
+export interface ConfirmBooksRequest {
+  books: BookPreview[];
+}
+
+export interface ConfirmedBookResult {
+  bookId: number;
+  libraryBookId?: number;
+  title: string;
+  wasCreated: boolean;
+  addedToLibrary: boolean;
+  error?: string;
+}
+
+export interface ConfirmBooksResult {
+  results: ConfirmedBookResult[];
+  successCount: number;
+  failedCount: number;
+}
+

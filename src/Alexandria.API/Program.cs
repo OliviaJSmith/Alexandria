@@ -15,6 +15,20 @@ builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<ILoanService, LoanService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddScoped<IBookLookupService, BookLookupService>();
+builder.Services.AddScoped<IOcrService, AzureOcrService>();
+
+// Configure HTTP clients for external APIs
+builder.Services.AddHttpClient("OpenLibrary", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["OpenLibrary:BaseUrl"] ?? "https://openlibrary.org");
+    client.DefaultRequestHeaders.Add("User-Agent", "Alexandria-Library-App/1.0 (https://github.com/OliviaJSmith/Alexandria)");
+});
+
+builder.Services.AddHttpClient("GoogleBooks", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["GoogleBooks:BaseUrl"] ?? "https://www.googleapis.com/books/v1");
+});
 
 // Configure PostgreSQL database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
