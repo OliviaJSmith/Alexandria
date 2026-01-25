@@ -1,25 +1,41 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Book, Library, LibraryBook, Loan, Friend, BookPreview, ConfirmBooksRequest, ConfirmBooksResult } from '../types';
-import { config } from '../config';
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  Book,
+  Library,
+  LibraryBook,
+  Loan,
+  Friend,
+  BookPreview,
+  ConfirmBooksRequest,
+  ConfirmBooksResult,
+} from "../types";
+import { config } from "../config";
+
+/** Represents a file object for React Native FormData uploads */
+interface FormDataFile {
+  uri: string;
+  type: string;
+  name: string;
+}
 
 const api = axios.create({
   baseURL: config.api.baseUrl,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Add token to requests
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('authToken');
+    const token = await AsyncStorage.getItem("authToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Books API
@@ -30,7 +46,7 @@ export const searchBooks = async (query: {
   isbn?: string;
   publishedYear?: number;
 }): Promise<Book[]> => {
-  const response = await api.get('/books', { params: query });
+  const response = await api.get("/books", { params: query });
   return response.data;
 };
 
@@ -40,21 +56,21 @@ export const getBook = async (id: number): Promise<Book> => {
 };
 
 export const createBook = async (book: Partial<Book>): Promise<Book> => {
-  const response = await api.post('/books', book);
+  const response = await api.post("/books", book);
   return response.data;
 };
 
 export const searchBooksByImage = async (imageUri: string): Promise<Book[]> => {
   const formData = new FormData();
-  formData.append('image', {
+  formData.append("image", {
     uri: imageUri,
-    type: 'image/jpeg',
-    name: 'book-image.jpg',
-  } as any);
+    type: "image/jpeg",
+    name: "book-image.jpg",
+  } as unknown as Blob);
 
-  const response = await api.post('/books/search-by-image', formData, {
+  const response = await api.post("/books/search-by-image", formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      "Content-Type": "multipart/form-data",
     },
   });
   return response.data;
@@ -62,8 +78,8 @@ export const searchBooksByImage = async (imageUri: string): Promise<Book[]> => {
 
 // Libraries API
 export const getLibraries = async (isPublic?: boolean): Promise<Library[]> => {
-  const response = await api.get('/libraries', {
-    params: isPublic !== undefined ? { isPublic } : {}
+  const response = await api.get("/libraries", {
+    params: isPublic !== undefined ? { isPublic } : {},
   });
   return response.data;
 };
@@ -73,12 +89,17 @@ export const getLibrary = async (id: number): Promise<Library> => {
   return response.data;
 };
 
-export const createLibrary = async (library: { name: string; isPublic: boolean }): Promise<Library> => {
-  const response = await api.post('/libraries', library);
+export const createLibrary = async (library: {
+  name: string;
+  isPublic: boolean;
+}): Promise<Library> => {
+  const response = await api.post("/libraries", library);
   return response.data;
 };
 
-export const getLibraryBooks = async (libraryId: number): Promise<LibraryBook[]> => {
+export const getLibraryBooks = async (
+  libraryId: number,
+): Promise<LibraryBook[]> => {
   const response = await api.get(`/libraries/${libraryId}/books`);
   return response.data;
 };
@@ -86,22 +107,29 @@ export const getLibraryBooks = async (libraryId: number): Promise<LibraryBook[]>
 export const addBookToLibrary = async (
   libraryId: number,
   bookId: number,
-  status: number = 0
+  status: number = 0,
 ): Promise<LibraryBook> => {
-  const response = await api.post(`/libraries/${libraryId}/books`, { bookId, status });
+  const response = await api.post(`/libraries/${libraryId}/books`, {
+    bookId,
+    status,
+  });
   return response.data;
 };
 
 export const removeBookFromLibrary = async (
   libraryId: number,
-  libraryBookId: number
+  libraryBookId: number,
 ): Promise<void> => {
   await api.delete(`/libraries/${libraryId}/books/${libraryBookId}`);
 };
 
 // Loans API
-export const getLoans = async (filter?: 'borrowed' | 'lent'): Promise<Loan[]> => {
-  const response = await api.get('/loans', { params: filter ? { filter } : {} });
+export const getLoans = async (
+  filter?: "borrowed" | "lent",
+): Promise<Loan[]> => {
+  const response = await api.get("/loans", {
+    params: filter ? { filter } : {},
+  });
   return response.data;
 };
 
@@ -115,18 +143,21 @@ export const createLoan = async (loan: {
   borrowerId: number;
   dueDate?: string;
 }): Promise<Loan> => {
-  const response = await api.post('/loans', loan);
+  const response = await api.post("/loans", loan);
   return response.data;
 };
 
-export const updateLoanStatus = async (id: number, status: number): Promise<Loan> => {
+export const updateLoanStatus = async (
+  id: number,
+  status: number,
+): Promise<Loan> => {
   const response = await api.patch(`/loans/${id}/status`, { status });
   return response.data;
 };
 
 // Friends API
 export const getFriends = async (): Promise<Friend[]> => {
-  const response = await api.get('/friends');
+  const response = await api.get("/friends");
   return response.data;
 };
 
@@ -134,7 +165,9 @@ export const sendFriendRequest = async (friendId: number): Promise<void> => {
   await api.post(`/friends/${friendId}`);
 };
 
-export const acceptFriendRequest = async (friendshipId: number): Promise<void> => {
+export const acceptFriendRequest = async (
+  friendshipId: number,
+): Promise<void> => {
   await api.put(`/friends/${friendshipId}/accept`);
 };
 
@@ -143,30 +176,34 @@ export const removeFriend = async (friendshipId: number): Promise<void> => {
 };
 
 // Book Scanning API
-export const scanSingleBook = async (imageUri: string): Promise<BookPreview> => {
+export const scanSingleBook = async (
+  imageUri: string,
+): Promise<BookPreview> => {
   const formData = new FormData();
-  formData.append('image', {
+  formData.append("image", {
     uri: imageUri,
-    type: 'image/jpeg',
-    name: 'book-image.jpg',
-  } as any);
+    type: "image/jpeg",
+    name: "book-image.jpg",
+  } as unknown as Blob);
 
-  const response = await api.post('/books/scan-single', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+  const response = await api.post("/books/scan-single", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return response.data;
 };
 
-export const scanBookshelf = async (imageUri: string): Promise<BookPreview[]> => {
+export const scanBookshelf = async (
+  imageUri: string,
+): Promise<BookPreview[]> => {
   const formData = new FormData();
-  formData.append('image', {
+  formData.append("image", {
     uri: imageUri,
-    type: 'image/jpeg',
-    name: 'bookshelf-image.jpg',
-  } as any);
+    type: "image/jpeg",
+    name: "bookshelf-image.jpg",
+  } as unknown as Blob);
 
-  const response = await api.post('/books/scan-bookshelf', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+  const response = await api.post("/books/scan-bookshelf", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return response.data;
 };
@@ -178,21 +215,24 @@ export const lookupBookByIsbn = async (isbn: string): Promise<BookPreview> => {
 
 export const confirmBooksToLibrary = async (
   libraryId: number,
-  request: ConfirmBooksRequest
+  request: ConfirmBooksRequest,
 ): Promise<ConfirmBooksResult> => {
-  const response = await api.post(`/libraries/${libraryId}/confirm-books`, request);
+  const response = await api.post(
+    `/libraries/${libraryId}/confirm-books`,
+    request,
+  );
   return response.data;
 };
 
 // Authentication
 export const setAuthToken = async (token: string): Promise<void> => {
-  await AsyncStorage.setItem('authToken', token);
+  await AsyncStorage.setItem("authToken", token);
 };
 
 export const getAuthToken = async (): Promise<string | null> => {
-  return await AsyncStorage.getItem('authToken');
+  return await AsyncStorage.getItem("authToken");
 };
 
 export const removeAuthToken = async (): Promise<void> => {
-  await AsyncStorage.removeItem('authToken');
+  await AsyncStorage.removeItem("authToken");
 };

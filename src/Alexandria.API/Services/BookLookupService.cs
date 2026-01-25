@@ -13,15 +13,22 @@ namespace Alexandria.API.Services;
 public class BookLookupService(
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
-    ILogger<BookLookupService> logger) : IBookLookupService
+    ILogger<BookLookupService> logger
+) : IBookLookupService
 {
-    private static readonly SemaphoreSlim _rateLimiter = new(1, 1);
-    private static DateTime _lastOpenLibraryRequest = DateTime.MinValue;
+    private readonly SemaphoreSlim _rateLimiter = new(1, 1);
+    private DateTime _lastOpenLibraryRequest = DateTime.MinValue;
 
-    private readonly int _requestDelayMs = configuration.GetValue("OpenLibrary:RequestDelayMs", 1000);
+    private readonly int _requestDelayMs = configuration.GetValue(
+        "OpenLibrary:RequestDelayMs",
+        1000
+    );
     private readonly string _googleBooksApiKey = configuration["GoogleBooks:ApiKey"] ?? "";
 
-    public async Task<BookPreviewDto?> LookupByIsbnAsync(string isbn, CancellationToken cancellationToken = default)
+    public async Task<BookPreviewDto?> LookupByIsbnAsync(
+        string isbn,
+        CancellationToken cancellationToken = default
+    )
     {
         var normalizedIsbn = IsbnHelper.NormalizeToIsbn13(isbn);
         if (normalizedIsbn is null)
@@ -40,25 +47,43 @@ public class BookLookupService(
         return result;
     }
 
-    public async Task<IEnumerable<BookPreviewDto>> SearchAsync(string title, string? author = null, int maxResults = 5, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<BookPreviewDto>> SearchAsync(
+        string title,
+        string? author = null,
+        int maxResults = 5,
+        CancellationToken cancellationToken = default
+    )
     {
         var results = new List<BookPreviewDto>();
 
         // Try Open Library search first
-        var openLibraryResults = await SearchOpenLibraryAsync(title, author, maxResults, cancellationToken);
+        var openLibraryResults = await SearchOpenLibraryAsync(
+            title,
+            author,
+            maxResults,
+            cancellationToken
+        );
         results.AddRange(openLibraryResults);
 
         // If we don't have enough results, try Google Books
         if (results.Count < maxResults)
         {
-            var googleResults = await SearchGoogleBooksAsync(title, author, maxResults - results.Count, cancellationToken);
+            var googleResults = await SearchGoogleBooksAsync(
+                title,
+                author,
+                maxResults - results.Count,
+                cancellationToken
+            );
             results.AddRange(googleResults);
         }
 
         return results.Take(maxResults);
     }
 
-    public async Task<IEnumerable<BookPreviewDto>> LookupMultipleIsbnsAsync(IEnumerable<string> isbns, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<BookPreviewDto>> LookupMultipleIsbnsAsync(
+        IEnumerable<string> isbns,
+        CancellationToken cancellationToken = default
+    )
     {
         var results = new List<BookPreviewDto>();
 
@@ -77,7 +102,10 @@ public class BookLookupService(
 
     #region Open Library API
 
-    private async Task<BookPreviewDto?> LookupFromOpenLibraryAsync(string isbn, CancellationToken cancellationToken)
+    private async Task<BookPreviewDto?> LookupFromOpenLibraryAsync(
+        string isbn,
+        CancellationToken cancellationToken
+    )
     {
         await ThrottleOpenLibraryRequestAsync(cancellationToken);
 
@@ -88,11 +116,17 @@ public class BookLookupService(
 
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogDebug("Open Library ISBN lookup failed for {Isbn}: {StatusCode}", isbn, response.StatusCode);
+                logger.LogDebug(
+                    "Open Library ISBN lookup failed for {Isbn}: {StatusCode}",
+                    isbn,
+                    response.StatusCode
+                );
                 return null;
             }
 
-            var edition = await response.Content.ReadFromJsonAsync<OpenLibraryEdition>(cancellationToken: cancellationToken);
+            var edition = await response.Content.ReadFromJsonAsync<OpenLibraryEdition>(
+                cancellationToken: cancellationToken
+            );
             if (edition is null)
                 return null;
 
@@ -112,7 +146,9 @@ public class BookLookupService(
                 var workResponse = await client.GetAsync($"{workKey}.json", cancellationToken);
                 if (workResponse.IsSuccessStatusCode)
                 {
-                    var work = await workResponse.Content.ReadFromJsonAsync<OpenLibraryWork>(cancellationToken: cancellationToken);
+                    var work = await workResponse.Content.ReadFromJsonAsync<OpenLibraryWork>(
+                        cancellationToken: cancellationToken
+                    );
                     description = ExtractDescription(work?.Description);
                 }
             }
@@ -124,10 +160,16 @@ public class BookLookupService(
                 foreach (var authorRef in edition.Authors.Take(3))
                 {
                     await ThrottleOpenLibraryRequestAsync(cancellationToken);
-                    var authorResponse = await client.GetAsync($"{authorRef.Key}.json", cancellationToken);
+                    var authorResponse = await client.GetAsync(
+                        $"{authorRef.Key}.json",
+                        cancellationToken
+                    );
                     if (authorResponse.IsSuccessStatusCode)
                     {
-                        var author = await authorResponse.Content.ReadFromJsonAsync<OpenLibraryAuthor>(cancellationToken: cancellationToken);
+                        var author =
+                            await authorResponse.Content.ReadFromJsonAsync<OpenLibraryAuthor>(
+                                cancellationToken: cancellationToken
+                            );
                         if (author?.Name is not null)
                             authorNames.Add(author.Name);
                     }
@@ -146,7 +188,7 @@ public class BookLookupService(
                 PageCount = edition.NumberOfPages,
                 Source = BookSource.OpenLibrary,
                 ExternalId = edition.Key,
-                Confidence = 1.0
+                Confidence = 1.0,
             };
         }
         catch (Exception ex)
@@ -156,7 +198,12 @@ public class BookLookupService(
         }
     }
 
-    private async Task<IEnumerable<BookPreviewDto>> SearchOpenLibraryAsync(string title, string? author, int maxResults, CancellationToken cancellationToken)
+    private async Task<IEnumerable<BookPreviewDto>> SearchOpenLibraryAsync(
+        string title,
+        string? author,
+        int maxResults,
+        CancellationToken cancellationToken
+    )
     {
         await ThrottleOpenLibraryRequestAsync(cancellationToken);
 
@@ -167,26 +214,35 @@ public class BookLookupService(
             if (!string.IsNullOrEmpty(author))
                 query += $"+author:{Uri.EscapeDataString(author)}";
 
-            var response = await client.GetAsync($"/search.json?q={query}&limit={maxResults}", cancellationToken);
+            var response = await client.GetAsync(
+                $"/search.json?q={query}&limit={maxResults}",
+                cancellationToken
+            );
 
             if (!response.IsSuccessStatusCode)
                 return [];
 
-            var searchResult = await response.Content.ReadFromJsonAsync<OpenLibrarySearchResult>(cancellationToken: cancellationToken);
+            var searchResult = await response.Content.ReadFromJsonAsync<OpenLibrarySearchResult>(
+                cancellationToken: cancellationToken
+            );
             if (searchResult?.Docs is null)
                 return [];
 
-            return searchResult.Docs.Take(maxResults).Select(doc => new BookPreviewDto
-            {
-                Title = doc.Title ?? "Unknown Title",
-                Author = doc.AuthorName?.FirstOrDefault(),
-                Isbn = doc.Isbn?.FirstOrDefault(),
-                PublishedYear = doc.FirstPublishYear,
-                CoverImageUrl = doc.CoverId.HasValue ? $"https://covers.openlibrary.org/b/id/{doc.CoverId}-L.jpg" : null,
-                Source = BookSource.OpenLibrary,
-                ExternalId = doc.Key,
-                Confidence = 0.9
-            });
+            return searchResult
+                .Docs.Take(maxResults)
+                .Select(doc => new BookPreviewDto
+                {
+                    Title = doc.Title ?? "Unknown Title",
+                    Author = doc.AuthorName?.FirstOrDefault(),
+                    Isbn = doc.Isbn?.FirstOrDefault(),
+                    PublishedYear = doc.FirstPublishYear,
+                    CoverImageUrl = doc.CoverId.HasValue
+                        ? $"https://covers.openlibrary.org/b/id/{doc.CoverId}-L.jpg"
+                        : null,
+                    Source = BookSource.OpenLibrary,
+                    ExternalId = doc.Key,
+                    Confidence = 0.9,
+                });
         }
         catch (Exception ex)
         {
@@ -218,7 +274,10 @@ public class BookLookupService(
 
     #region Google Books API
 
-    private async Task<BookPreviewDto?> LookupFromGoogleBooksAsync(string isbn, CancellationToken cancellationToken)
+    private async Task<BookPreviewDto?> LookupFromGoogleBooksAsync(
+        string isbn,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -231,11 +290,17 @@ public class BookLookupService(
 
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogDebug("Google Books ISBN lookup failed for {Isbn}: {StatusCode}", isbn, response.StatusCode);
+                logger.LogDebug(
+                    "Google Books ISBN lookup failed for {Isbn}: {StatusCode}",
+                    isbn,
+                    response.StatusCode
+                );
                 return null;
             }
 
-            var result = await response.Content.ReadFromJsonAsync<GoogleBooksSearchResult>(cancellationToken: cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<GoogleBooksSearchResult>(
+                cancellationToken: cancellationToken
+            );
             var item = result?.Items?.FirstOrDefault();
             if (item?.VolumeInfo is null)
                 return null;
@@ -244,7 +309,9 @@ public class BookLookupService(
             return new BookPreviewDto
             {
                 Title = volumeInfo.Title ?? "Unknown Title",
-                Author = volumeInfo.Authors is not null ? string.Join(", ", volumeInfo.Authors) : null,
+                Author = volumeInfo.Authors is not null
+                    ? string.Join(", ", volumeInfo.Authors)
+                    : null,
                 Isbn = isbn,
                 Publisher = volumeInfo.Publisher,
                 PublishedYear = ParseYear(volumeInfo.PublishedDate),
@@ -254,7 +321,7 @@ public class BookLookupService(
                 PageCount = volumeInfo.PageCount,
                 Source = BookSource.GoogleBooks,
                 ExternalId = item.Id,
-                Confidence = 1.0
+                Confidence = 1.0,
             };
         }
         catch (Exception ex)
@@ -264,7 +331,12 @@ public class BookLookupService(
         }
     }
 
-    private async Task<IEnumerable<BookPreviewDto>> SearchGoogleBooksAsync(string title, string? author, int maxResults, CancellationToken cancellationToken)
+    private async Task<IEnumerable<BookPreviewDto>> SearchGoogleBooksAsync(
+        string title,
+        string? author,
+        int maxResults,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -282,33 +354,44 @@ public class BookLookupService(
             if (!response.IsSuccessStatusCode)
                 return [];
 
-            var result = await response.Content.ReadFromJsonAsync<GoogleBooksSearchResult>(cancellationToken: cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<GoogleBooksSearchResult>(
+                cancellationToken: cancellationToken
+            );
             if (result?.Items is null)
                 return [];
 
-            return result.Items.Take(maxResults).Select(item =>
-            {
-                var volumeInfo = item.VolumeInfo!;
-                var isbn = volumeInfo.IndustryIdentifiers?
-                    .FirstOrDefault(id => id.Type == "ISBN_13")?.Identifier
-                    ?? volumeInfo.IndustryIdentifiers?.FirstOrDefault()?.Identifier;
-
-                return new BookPreviewDto
+            return result
+                .Items.Take(maxResults)
+                .Select(item =>
                 {
-                    Title = volumeInfo.Title ?? "Unknown Title",
-                    Author = volumeInfo.Authors is not null ? string.Join(", ", volumeInfo.Authors) : null,
-                    Isbn = isbn is not null ? IsbnHelper.NormalizeToIsbn13(isbn) : null,
-                    Publisher = volumeInfo.Publisher,
-                    PublishedYear = ParseYear(volumeInfo.PublishedDate),
-                    Description = volumeInfo.Description,
-                    CoverImageUrl = volumeInfo.ImageLinks?.Thumbnail?.Replace("http://", "https://"),
-                    Genre = volumeInfo.Categories?.FirstOrDefault(),
-                    PageCount = volumeInfo.PageCount,
-                    Source = BookSource.GoogleBooks,
-                    ExternalId = item.Id,
-                    Confidence = 0.9
-                };
-            });
+                    var volumeInfo = item.VolumeInfo!;
+                    var isbn =
+                        volumeInfo
+                            .IndustryIdentifiers?.FirstOrDefault(id => id.Type == "ISBN_13")
+                            ?.Identifier
+                        ?? volumeInfo.IndustryIdentifiers?.FirstOrDefault()?.Identifier;
+
+                    return new BookPreviewDto
+                    {
+                        Title = volumeInfo.Title ?? "Unknown Title",
+                        Author = volumeInfo.Authors is not null
+                            ? string.Join(", ", volumeInfo.Authors)
+                            : null,
+                        Isbn = isbn is not null ? IsbnHelper.NormalizeToIsbn13(isbn) : null,
+                        Publisher = volumeInfo.Publisher,
+                        PublishedYear = ParseYear(volumeInfo.PublishedDate),
+                        Description = volumeInfo.Description,
+                        CoverImageUrl = volumeInfo.ImageLinks?.Thumbnail?.Replace(
+                            "http://",
+                            "https://"
+                        ),
+                        Genre = volumeInfo.Categories?.FirstOrDefault(),
+                        PageCount = volumeInfo.PageCount,
+                        Source = BookSource.GoogleBooks,
+                        ExternalId = item.Id,
+                        Confidence = 0.9,
+                    };
+                });
         }
         catch (Exception ex)
         {
@@ -325,7 +408,12 @@ public class BookLookupService(
             return null;
 
         // Try to extract a 4-digit year from the string
-        if (dateString.Length >= 4 && int.TryParse(dateString[..4], out var year) && year >= 1000 && year <= 9999)
+        if (
+            dateString.Length >= 4
+            && int.TryParse(dateString[..4], out var year)
+            && year >= 1000
+            && year <= 9999
+        )
             return year;
 
         return null;
@@ -336,7 +424,11 @@ public class BookLookupService(
     /// </summary>
     private static string? ExtractDescription(JsonElement? element)
     {
-        if (element is null || element.Value.ValueKind == JsonValueKind.Undefined || element.Value.ValueKind == JsonValueKind.Null)
+        if (
+            element is null
+            || element.Value.ValueKind == JsonValueKind.Undefined
+            || element.Value.ValueKind == JsonValueKind.Null
+        )
             return null;
 
         // If it's a string, return it directly
@@ -344,7 +436,10 @@ public class BookLookupService(
             return element.Value.GetString();
 
         // If it's an object with a "value" property, extract that
-        if (element.Value.ValueKind == JsonValueKind.Object && element.Value.TryGetProperty("value", out var valueProperty))
+        if (
+            element.Value.ValueKind == JsonValueKind.Object
+            && element.Value.TryGetProperty("value", out var valueProperty)
+        )
             return valueProperty.GetString();
 
         return null;

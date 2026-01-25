@@ -12,10 +12,13 @@ namespace Alexandria.API.Controllers;
 public class LibrariesController(
     ILibraryService libraryService,
     IBookService bookService,
-    ILogger<LibrariesController> logger) : BaseController
+    ILogger<LibrariesController> logger
+) : BaseController
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<LibraryDto>>> GetLibraries([FromQuery] bool? isPublic = null)
+    public async Task<ActionResult<IEnumerable<LibraryDto>>> GetLibraries(
+        [FromQuery] bool? isPublic = null
+    )
     {
         var userId = GetCurrentUserId();
         var libraries = await libraryService.GetLibrariesAsync(userId, isPublic);
@@ -55,7 +58,10 @@ public class LibrariesController(
     }
 
     [HttpPost("{id}/books")]
-    public async Task<ActionResult<LibraryBookDto>> AddBookToLibrary(int id, AddBookToLibraryRequest request)
+    public async Task<ActionResult<LibraryBookDto>> AddBookToLibrary(
+        int id,
+        AddBookToLibraryRequest request
+    )
     {
         var userId = GetCurrentUserId();
 
@@ -78,7 +84,11 @@ public class LibrariesController(
         if (!await libraryService.UserOwnsLibraryAsync(libraryId, userId))
             return Forbid();
 
-        var removed = await libraryService.RemoveBookFromLibraryAsync(libraryId, libraryBookId, userId);
+        var removed = await libraryService.RemoveBookFromLibraryAsync(
+            libraryId,
+            libraryBookId,
+            userId
+        );
 
         if (!removed)
             return NotFound("Book not found in library");
@@ -91,7 +101,10 @@ public class LibrariesController(
     /// Creates new book records if they don't exist, then adds them to the library.
     /// </summary>
     [HttpPost("{id}/confirm-books")]
-    public async Task<ActionResult<ConfirmBooksResult>> ConfirmBooks(int id, ConfirmBooksRequest request)
+    public async Task<ActionResult<ConfirmBooksResult>> ConfirmBooks(
+        int id,
+        ConfirmBooksRequest request
+    )
     {
         var userId = GetCurrentUserId();
 
@@ -117,19 +130,31 @@ public class LibrariesController(
                 else
                 {
                     // Create a new book record
+                    string? normalizedIsbn = null;
+                    if (!string.IsNullOrEmpty(preview.Isbn))
+                    {
+                        normalizedIsbn = IsbnHelper.NormalizeToIsbn13(preview.Isbn);
+                        if (normalizedIsbn is null)
+                        {
+                            logger.LogWarning(
+                                "Invalid ISBN '{Isbn}' for book '{Title}'. The ISBN will not be stored.",
+                                preview.Isbn,
+                                preview.Title
+                            );
+                        }
+                    }
+
                     var createRequest = new CreateBookRequest
                     {
                         Title = preview.Title,
                         Author = preview.Author,
-                        Isbn = !string.IsNullOrEmpty(preview.Isbn)
-                            ? IsbnHelper.NormalizeToIsbn13(preview.Isbn) ?? preview.Isbn
-                            : null,
+                        Isbn = normalizedIsbn,
                         Publisher = preview.Publisher,
                         PublishedYear = preview.PublishedYear,
                         Description = preview.Description,
                         CoverImageUrl = preview.CoverImageUrl,
                         Genre = preview.Genre,
-                        PageCount = preview.PageCount
+                        PageCount = preview.PageCount,
                     };
 
                     var createdBook = await bookService.CreateBookAsync(createRequest);
@@ -141,7 +166,11 @@ public class LibrariesController(
 
                 // Add book to library
                 var addRequest = new AddBookToLibraryRequest { BookId = bookId };
-                var libraryBook = await libraryService.AddBookToLibraryAsync(id, userId, addRequest);
+                var libraryBook = await libraryService.AddBookToLibraryAsync(
+                    id,
+                    userId,
+                    addRequest
+                );
 
                 if (libraryBook is not null)
                 {
@@ -167,7 +196,10 @@ public class LibrariesController(
 
         logger.LogInformation(
             "Confirmed {SuccessCount} books (failed: {FailedCount}) to library {LibraryId}",
-            result.SuccessCount, result.FailedCount, id);
+            result.SuccessCount,
+            result.FailedCount,
+            id
+        );
 
         return Ok(result);
     }
