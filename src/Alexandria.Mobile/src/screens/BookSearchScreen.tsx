@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { searchBooks } from '../services/api';
 import { Book } from '../types';
 
@@ -37,21 +37,28 @@ export default function BookSearchScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchBox}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search for books..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-        />
-        <Button title="Search" onPress={handleSearch} />
+      <View style={styles.header}>
+        <View style={styles.searchBox}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search for books..."
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+          />
+          <TouchableOpacity style={styles.button} onPress={handleSearch}>
+            <Text style={styles.buttonText}>Search</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.imageSearchButton} 
+          onPress={() => navigation.navigate('ImageSearch')}
+        >
+          <Text style={styles.buttonText}>Search by Image</Text>
+        </TouchableOpacity>
       </View>
-      
-      <Button
-        title="Search by Image"
-        onPress={() => navigation.navigate('ImageSearch')}
-      />
       
       <FlatList
         data={books}
@@ -67,21 +74,25 @@ export default function BookSearchScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#121212',
+  },
+  header: {
+    backgroundColor: '#1E1E1E',
+    paddingBottom: 15,
   },
   searchBox: {
     flexDirection: 'row',
     padding: 15,
-    backgroundColor: 'white',
     alignItems: 'center',
     gap: 10,
   },
   searchInput: {
     flex: 1,
     padding: 10,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#2C2C2C',
     borderRadius: 8,
     fontSize: 16,
+    color: '#FFFFFF',
   },
   list: {
     flex: 1,
@@ -90,13 +101,13 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   bookCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#1E1E1E',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
@@ -106,16 +117,35 @@ const styles = StyleSheet.create({
   bookTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   bookAuthor: {
     fontSize: 14,
-    color: '#666',
+    color: '#B0B0B0',
     marginBottom: 3,
   },
   bookYear: {
     fontSize: 12,
-    color: '#999',
+    color: '#888',
+  },
+  button: {
+    backgroundColor: '#E5A823',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  imageSearchButton: {
+    backgroundColor: '#C4891E',
+    padding: 12,
+    marginHorizontal: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

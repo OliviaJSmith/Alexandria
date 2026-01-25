@@ -1,17 +1,27 @@
 // Configuration for the Alexandria mobile app
-// Update these values based on your environment
+// Environment variables are passed through app.config.js and accessed via expo-constants
+
+import Constants from 'expo-constants';
+
+const extra = Constants.expoConfig?.extra;
 
 export const config = {
   // API Configuration
   api: {
     // Development: Use your local IP address for testing on physical devices
     // Production: Use your deployed API URL
-    baseUrl: process.env.API_BASE_URL || 'http://localhost:5000/api',
+    baseUrl: extra?.apiBaseUrl || 'http://localhost:5000/api',
   },
   
-  // Authentication Configuration
-  auth: {
-    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  // Google OAuth Configuration
+  // Get these from Google Cloud Console: https://console.cloud.google.com/apis/credentials
+  google: {
+    // Web OAuth Client ID (used for Expo Go development)
+    webClientId: extra?.googleWebClientId || '',
+    // Android OAuth Client ID (use the one associated with your keystore)
+    androidClientId: extra?.googleAndroidClientId || '',
+    // iOS OAuth Client ID
+    iosClientId: extra?.googleIosClientId || '',
   },
   
   // Feature Flags

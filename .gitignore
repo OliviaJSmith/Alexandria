@@ -99,3 +99,4 @@ logs/
 # Secrets
 secrets.json
 *.pfx
+*.keystore

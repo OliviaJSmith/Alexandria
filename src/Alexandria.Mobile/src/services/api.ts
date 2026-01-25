@@ -3,10 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Book, Library, LibraryBook, Loan, Friend, BookPreview, ConfirmBooksRequest, ConfirmBooksResult } from '../types';
 import { config } from '../config';
 
-const API_BASE_URL = config.api.baseUrl;
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: config.api.baseUrl,
   headers: {
     'Content-Type': 'application/json',
   },

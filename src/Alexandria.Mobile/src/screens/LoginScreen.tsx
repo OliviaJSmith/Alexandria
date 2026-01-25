@@ -1,23 +1,55 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { setAuthToken } from '../services/api';
+import { config } from '../config';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }: any) {
-  const [email, setEmail] = useState('');
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    //androidClientId: config.google.androidClientId,
+    //iosClientId: config.google.iosClientId,
+    webClientId: config.google.webClientId,
+  });
+
+  useEffect(() => {
+    handleSignInResponse();
+  }, [response]);
+
+  const handleSignInResponse = async () => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        // Store the access token
+        await setAuthToken(authentication.accessToken);
+        
+        // Optionally fetch user info
+        try {
+          const userInfoResponse = await fetch(
+            'https://www.googleapis.com/userinfo/v2/me',
+            { headers: { Authorization: `Bearer ${authentication.accessToken}` } }
+          );
+          const userInfo = await userInfoResponse.json();
+          console.log('User info:', userInfo);
+        } catch (error) {
+          console.log('Failed to fetch user info:', error);
+        }
+
+        navigation.replace('Main');
+      }
+    } else if (response?.type === 'error') {
+      Alert.alert('Error', 'Google sign-in failed. Please try again.');
+    }
+  };
 
   const handleLogin = async () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email');
+    if (!request) {
+      Alert.alert('Error', 'Google Sign-In is not ready yet. Please try again.');
       return;
     }
-
-    // Placeholder for actual Google Auth implementation
-    // For now, just store a dummy token
-    const dummyToken = 'dummy-jwt-token-' + Date.now();
-    await setAuthToken(dummyToken);
-    
-    Alert.alert('Success', 'Logged in successfully!');
-    navigation.replace('Main');
+    await promptAsync();
   };
 
   return (
@@ -26,19 +58,20 @@ export default function LoginScreen({ navigation }: any) {
       <Text style={styles.subtitle}>Your Home Library</Text>
       
       <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        
-        <Button title="Login with Google" onPress={handleLogin} />
+        <TouchableOpacity 
+          style={[styles.button, !request && styles.buttonDisabled]} 
+          onPress={handleLogin}
+          disabled={!request}
+        >
+          {!request ? (
+            <ActivityIndicator color="#1A1A1A" />
+          ) : (
+            <Text style={styles.buttonText}>Sign in with Google</Text>
+          )}
+        </TouchableOpacity>
         
         <Text style={styles.note}>
-          Note: Google authentication will be configured with your credentials
+          Sign in to sync your library across devices
         </Text>
       </View>
     </View>
@@ -48,39 +81,45 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#121212',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    overflow: 'visible',
   },
   title: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 18,
-    color: '#666',
+    color: '#B0B0B0',
     marginBottom: 40,
   },
   form: {
     width: '100%',
     maxWidth: 400,
   },
-  input: {
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
   note: {
     marginTop: 20,
     textAlign: 'center',
-    color: '#999',
+    color: '#888',
     fontSize: 12,
+  },
+  button: {
+    backgroundColor: '#E5A823',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
