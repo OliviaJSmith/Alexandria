@@ -2,75 +2,75 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '10.0.x'
-    
-    - name: Restore dependencies
-      run: dotnet restore
-    
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
-    
-    - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal
-      continue-on-error: true
-    
-    - name: Publish
-      run: dotnet publish src/Alexandria.API/Alexandria.API.csproj -c Release -o ./publish
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: api-package
-        path: ./publish
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+        continue-on-error: true
+
+      - name: Publish
+        run: dotnet publish src/Alexandria.API/Alexandria.API.csproj -c Release -o ./publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-package
+          path: ./publish
 
   build-mobile:
     runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Install dependencies
-      working-directory: ./AlexandriaMobile
-      run: npm ci
-    
-    - name: Build web
-      working-directory: ./AlexandriaMobile
-      run: npm run build || echo "Build completed with warnings"
-      continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./src/Alexandria.Mobile
+        run: npm ci
+
+      - name: Build web
+        working-directory: ./src/Alexandria.Mobile
+        run: npm run build || echo "Build completed with warnings"
+        continue-on-error: true
 
   # Uncomment and configure when ready to deploy to Azure
   # deploy-api:
   #   needs: build-and-test
   #   runs-on: ubuntu-latest
   #   if: github.ref == 'refs/heads/main'
-  #   
+  #
   #   steps:
   #   - name: Download artifact
   #     uses: actions/download-artifact@v4
   #     with:
   #       name: api-package
   #       path: ./publish
-  #   
+  #
   #   - name: Deploy to Azure Web App
   #     uses: azure/webapps-deploy@v2
   #     with:
