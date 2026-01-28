@@ -3,13 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.API.Data;
 
-public class AlexandriaDbContext : DbContext
+public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options) : DbContext(options)
 {
-    public AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options) 
-        : base(options)
-    {
-    }
-
     public DbSet<User> Users { get; set; }
     public DbSet<Book> Books { get; set; }
     public DbSet<Library> Libraries { get; set; }

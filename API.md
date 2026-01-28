@@ -169,6 +169,132 @@ image=<binary-image-data>
 
 ---
 
+### Scan Single Book
+
+Scan a single book (cover or barcode) and get a preview for confirmation before adding to a library.
+
+**Endpoint**: `POST /books/scan-single`
+
+**Request**: `multipart/form-data`
+- `image` (file): Image file (JPEG, PNG) of book cover or barcode
+
+**Example Request**:
+```http
+POST /api/books/scan-single
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+image=<binary-image-data>
+```
+
+**Example Response**:
+```json
+{
+  "existingBookId": 1,
+  "title": "The Lord of the Rings",
+  "author": "J.R.R. Tolkien",
+  "isbn": "978-0618640157",
+  "publisher": "Houghton Mifflin",
+  "publishedYear": 2005,
+  "description": "Epic fantasy novel...",
+  "coverImageUrl": "https://example.com/cover.jpg",
+  "genre": "Fantasy",
+  "pageCount": 1178,
+  "source": 0,
+  "confidence": 0.95,
+  "externalId": null
+}
+```
+
+**Source Values**:
+- `0`: Local (found in database)
+- `1`: OpenLibrary
+- `2`: GoogleBooks
+- `3`: OcrText (extracted from image text)
+
+**Note**: If `existingBookId` is set, the book was found in the local database.
+
+---
+
+### Scan Bookshelf
+
+Scan a bookshelf image to detect multiple books at once.
+
+**Endpoint**: `POST /books/scan-bookshelf`
+
+**Request**: `multipart/form-data`
+- `image` (file): Image file (JPEG, PNG) of a bookshelf
+
+**Example Request**:
+```http
+POST /api/books/scan-bookshelf
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+image=<binary-image-data>
+```
+
+**Example Response**:
+```json
+[
+  {
+    "existingBookId": null,
+    "title": "The Hobbit",
+    "author": "J.R.R. Tolkien",
+    "isbn": "978-0547928227",
+    "source": 1,
+    "confidence": 0.85,
+    "externalId": "OL27516W"
+  },
+  {
+    "existingBookId": 5,
+    "title": "1984",
+    "author": "George Orwell",
+    "isbn": "978-0451524935",
+    "source": 0,
+    "confidence": 1.0
+  }
+]
+```
+
+---
+
+### Lookup Book by ISBN
+
+Look up book details by ISBN from external sources (Open Library, Google Books).
+
+**Endpoint**: `GET /books/lookup/{isbn}`
+
+**Path Parameters**:
+- `isbn` (string): ISBN-10 or ISBN-13 (will be normalized)
+
+**Example Request**:
+```http
+GET /api/books/lookup/978-0618640157
+Authorization: Bearer <token>
+```
+
+**Example Response**:
+```json
+{
+  "existingBookId": null,
+  "title": "The Lord of the Rings",
+  "author": "J.R.R. Tolkien",
+  "isbn": "9780618640157",
+  "publisher": "Houghton Mifflin",
+  "publishedYear": 2005,
+  "description": "Epic fantasy novel...",
+  "coverImageUrl": "https://covers.openlibrary.org/b/isbn/9780618640157-L.jpg",
+  "source": 1,
+  "confidence": 1.0,
+  "externalId": "OL27516W"
+}
+```
+
+**Note**: Returns 404 if ISBN is not found in any external source.
+
+---
+
 ## Libraries API
 
 ### Get Libraries
@@ -332,6 +458,75 @@ Remove a book from a library.
 - `libraryBookId` (integer): Library Book ID
 
 **Example Response**: `204 No Content`
+
+---
+
+### Confirm Books to Library
+
+Confirm and add scanned books (from scan-single or scan-bookshelf) to a library. Creates new book records if they don't exist, then adds them to the library.
+
+**Endpoint**: `POST /libraries/{id}/confirm-books`
+
+**Path Parameters**:
+- `id` (integer): Library ID
+
+**Request Body**:
+```json
+{
+  "books": [
+    {
+      "existingBookId": 1,
+      "title": "The Lord of the Rings",
+      "author": "J.R.R. Tolkien",
+      "isbn": "978-0618640157",
+      "source": 0,
+      "confidence": 1.0
+    },
+    {
+      "existingBookId": null,
+      "title": "The Hobbit",
+      "author": "J.R.R. Tolkien",
+      "isbn": "978-0547928227",
+      "publisher": "Houghton Mifflin",
+      "publishedYear": 2012,
+      "source": 1,
+      "confidence": 0.9,
+      "externalId": "OL27516W"
+    }
+  ]
+}
+```
+
+**Example Response**:
+```json
+{
+  "results": [
+    {
+      "bookId": 1,
+      "libraryBookId": 10,
+      "title": "The Lord of the Rings",
+      "wasCreated": false,
+      "addedToLibrary": true,
+      "error": null
+    },
+    {
+      "bookId": 15,
+      "libraryBookId": 11,
+      "title": "The Hobbit",
+      "wasCreated": true,
+      "addedToLibrary": true,
+      "error": null
+    }
+  ],
+  "successCount": 2,
+  "failedCount": 0
+}
+```
+
+**Notes**:
+- If `existingBookId` is set, that book is used directly
+- If `existingBookId` is null, a new book record is created
+- ISBN is normalized to ISBN-13 format before saving
 
 ---
 

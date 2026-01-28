@@ -1,248 +1,206 @@
-using Alexandria.API.Data;
 using Alexandria.API.DTOs;
-using Alexandria.API.Models;
+using Alexandria.API.Services;
+using Alexandria.API.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace Alexandria.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class LibrariesController : BaseController
+public class LibrariesController(
+    ILibraryService libraryService,
+    IBookService bookService,
+    ILogger<LibrariesController> logger
+) : BaseController
 {
-    private readonly AlexandriaDbContext _context;
-    private readonly ILogger<LibrariesController> _logger;
-
-    public LibrariesController(AlexandriaDbContext context, ILogger<LibrariesController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<LibraryDto>>> GetLibraries([FromQuery] bool? isPublic = null)
+    public async Task<ActionResult<IEnumerable<LibraryDto>>> GetLibraries(
+        [FromQuery] bool? isPublic = null
+    )
     {
         var userId = GetCurrentUserId();
-        var query = _context.Libraries.AsQueryable();
-
-        if (isPublic.HasValue)
-        {
-            if (isPublic.Value)
-            {
-                // Public libraries - show all public libraries
-                query = query.Where(l => l.IsPublic);
-            }
-            else
-            {
-                // Private libraries - show only user's private libraries
-                query = query.Where(l => !l.IsPublic && l.UserId == userId);
-            }
-        }
-        else
-        {
-            // Show user's own libraries (both public and private)
-            query = query.Where(l => l.UserId == userId);
-        }
-
-        var libraries = await query.ToListAsync();
-
-        return Ok(libraries.Select(l => new LibraryDto
-        {
-            Id = l.Id,
-            Name = l.Name,
-            IsPublic = l.IsPublic,
-            UserId = l.UserId,
-            CreatedAt = l.CreatedAt
-        }));
+        var libraries = await libraryService.GetLibrariesAsync(userId, isPublic);
+        return Ok(libraries);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<LibraryDto>> GetLibrary(int id)
     {
         var userId = GetCurrentUserId();
-        var library = await _context.Libraries.FindAsync(id);
+        var library = await libraryService.GetLibraryByIdAsync(id, userId);
 
-        if (library == null)
-        {
+        if (library is null)
             return NotFound();
-        }
 
-        // Check if user has access to this library
-        if (!library.IsPublic && library.UserId != userId)
-        {
-            return Forbid();
-        }
-
-        return Ok(new LibraryDto
-        {
-            Id = library.Id,
-            Name = library.Name,
-            IsPublic = library.IsPublic,
-            UserId = library.UserId,
-            CreatedAt = library.CreatedAt
-        });
+        return Ok(library);
     }
 
     [HttpPost]
     public async Task<ActionResult<LibraryDto>> CreateLibrary(CreateLibraryRequest request)
     {
         var userId = GetCurrentUserId();
-
-        var library = new Library
-        {
-            Name = request.Name,
-            IsPublic = request.IsPublic,
-            UserId = userId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _context.Libraries.Add(library);
-        await _context.SaveChangesAsync();
-
-        var libraryDto = new LibraryDto
-        {
-            Id = library.Id,
-            Name = library.Name,
-            IsPublic = library.IsPublic,
-            UserId = library.UserId,
-            CreatedAt = library.CreatedAt
-        };
-
-        return CreatedAtAction(nameof(GetLibrary), new { id = library.Id }, libraryDto);
+        var library = await libraryService.CreateLibraryAsync(userId, request);
+        return CreatedAtAction(nameof(GetLibrary), new { id = library.Id }, library);
     }
 
     [HttpGet("{id}/books")]
     public async Task<ActionResult<IEnumerable<LibraryBookDto>>> GetLibraryBooks(int id)
     {
         var userId = GetCurrentUserId();
-        var library = await _context.Libraries.FindAsync(id);
 
-        if (library == null)
-        {
+        if (!await libraryService.UserHasAccessToLibraryAsync(id, userId))
             return NotFound();
-        }
 
-        // Check if user has access to this library
-        if (!library.IsPublic && library.UserId != userId)
-        {
-            return Forbid();
-        }
-
-        var libraryBooks = await _context.LibraryBooks
-            .Include(lb => lb.Book)
-            .Where(lb => lb.LibraryId == id)
-            .ToListAsync();
-
-        return Ok(libraryBooks.Select(lb => new LibraryBookDto
-        {
-            Id = lb.Id,
-            LibraryId = lb.LibraryId,
-            Status = lb.Status,
-            AddedAt = lb.AddedAt,
-            Book = new BookDto
-            {
-                Id = lb.Book.Id,
-                Title = lb.Book.Title,
-                Author = lb.Book.Author,
-                Isbn = lb.Book.Isbn,
-                Publisher = lb.Book.Publisher,
-                PublishedYear = lb.Book.PublishedYear,
-                Description = lb.Book.Description,
-                CoverImageUrl = lb.Book.CoverImageUrl,
-                Genre = lb.Book.Genre,
-                PageCount = lb.Book.PageCount
-            }
-        }));
+        var books = await libraryService.GetLibraryBooksAsync(id, userId);
+        return Ok(books);
     }
 
     [HttpPost("{id}/books")]
-    public async Task<ActionResult<LibraryBookDto>> AddBookToLibrary(int id, AddBookToLibraryRequest request)
+    public async Task<ActionResult<LibraryBookDto>> AddBookToLibrary(
+        int id,
+        AddBookToLibraryRequest request
+    )
     {
         var userId = GetCurrentUserId();
-        var library = await _context.Libraries.FindAsync(id);
 
-        if (library == null)
-        {
-            return NotFound("Library not found");
-        }
-
-        // Check if user owns this library
-        if (library.UserId != userId)
-        {
+        if (!await libraryService.UserOwnsLibraryAsync(id, userId))
             return Forbid();
-        }
 
-        var book = await _context.Books.FindAsync(request.BookId);
-        if (book == null)
-        {
-            return NotFound("Book not found");
-        }
+        var result = await libraryService.AddBookToLibraryAsync(id, userId, request);
 
-        var libraryBook = new LibraryBook
-        {
-            LibraryId = id,
-            BookId = request.BookId,
-            Status = request.Status,
-            AddedAt = DateTime.UtcNow
-        };
+        if (result is null)
+            return NotFound("Library or book not found");
 
-        _context.LibraryBooks.Add(libraryBook);
-        await _context.SaveChangesAsync();
-
-        return Ok(new LibraryBookDto
-        {
-            Id = libraryBook.Id,
-            LibraryId = libraryBook.LibraryId,
-            Status = libraryBook.Status,
-            AddedAt = libraryBook.AddedAt,
-            Book = new BookDto
-            {
-                Id = book.Id,
-                Title = book.Title,
-                Author = book.Author,
-                Isbn = book.Isbn,
-                Publisher = book.Publisher,
-                PublishedYear = book.PublishedYear,
-                Description = book.Description,
-                CoverImageUrl = book.CoverImageUrl,
-                Genre = book.Genre,
-                PageCount = book.PageCount
-            }
-        });
+        return Ok(result);
     }
 
     [HttpDelete("{libraryId}/books/{libraryBookId}")]
     public async Task<ActionResult> RemoveBookFromLibrary(int libraryId, int libraryBookId)
     {
         var userId = GetCurrentUserId();
-        var library = await _context.Libraries.FindAsync(libraryId);
 
-        if (library == null)
-        {
-            return NotFound("Library not found");
-        }
-
-        // Check if user owns this library
-        if (library.UserId != userId)
-        {
+        if (!await libraryService.UserOwnsLibraryAsync(libraryId, userId))
             return Forbid();
-        }
 
-        var libraryBook = await _context.LibraryBooks
-            .FirstOrDefaultAsync(lb => lb.Id == libraryBookId && lb.LibraryId == libraryId);
+        var removed = await libraryService.RemoveBookFromLibraryAsync(
+            libraryId,
+            libraryBookId,
+            userId
+        );
 
-        if (libraryBook == null)
-        {
+        if (!removed)
             return NotFound("Book not found in library");
-        }
-
-        _context.LibraryBooks.Remove(libraryBook);
-        await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Confirms and adds scanned books to a library.
+    /// Creates new book records if they don't exist, then adds them to the library.
+    /// </summary>
+    [HttpPost("{id}/confirm-books")]
+    public async Task<ActionResult<ConfirmBooksResult>> ConfirmBooks(
+        int id,
+        ConfirmBooksRequest request
+    )
+    {
+        var userId = GetCurrentUserId();
+
+        if (!await libraryService.UserOwnsLibraryAsync(id, userId))
+            return Forbid();
+
+        var result = new ConfirmBooksResult();
+
+        foreach (var preview in request.Books)
+        {
+            var confirmedResult = new ConfirmedBookResult { Title = preview.Title };
+
+            try
+            {
+                int bookId;
+
+                // If the book already exists in our database, use that ID
+                if (preview.ExistingBookId.HasValue)
+                {
+                    bookId = preview.ExistingBookId.Value;
+                    confirmedResult.WasCreated = false;
+                }
+                else
+                {
+                    // Create a new book record
+                    string? normalizedIsbn = null;
+                    if (!string.IsNullOrEmpty(preview.Isbn))
+                    {
+                        normalizedIsbn = IsbnHelper.NormalizeToIsbn13(preview.Isbn);
+                        if (normalizedIsbn is null)
+                        {
+                            logger.LogWarning(
+                                "Invalid ISBN '{Isbn}' for book '{Title}'. The ISBN will not be stored.",
+                                preview.Isbn,
+                                preview.Title
+                            );
+                        }
+                    }
+
+                    var createRequest = new CreateBookRequest
+                    {
+                        Title = preview.Title,
+                        Author = preview.Author,
+                        Isbn = normalizedIsbn,
+                        Publisher = preview.Publisher,
+                        PublishedYear = preview.PublishedYear,
+                        Description = preview.Description,
+                        CoverImageUrl = preview.CoverImageUrl,
+                        Genre = preview.Genre,
+                        PageCount = preview.PageCount,
+                    };
+
+                    var createdBook = await bookService.CreateBookAsync(createRequest);
+                    bookId = createdBook.Id;
+                    confirmedResult.WasCreated = true;
+                }
+
+                confirmedResult.BookId = bookId;
+
+                // Add book to library
+                var addRequest = new AddBookToLibraryRequest { BookId = bookId };
+                var libraryBook = await libraryService.AddBookToLibraryAsync(
+                    id,
+                    userId,
+                    addRequest
+                );
+
+                if (libraryBook is not null)
+                {
+                    confirmedResult.LibraryBookId = libraryBook.Id;
+                    confirmedResult.AddedToLibrary = true;
+                    result.SuccessCount++;
+                }
+                else
+                {
+                    confirmedResult.Error = "Failed to add book to library";
+                    result.FailedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error confirming book '{Title}'", preview.Title);
+                confirmedResult.Error = "An error occurred while processing this book";
+                result.FailedCount++;
+            }
+
+            result.Results.Add(confirmedResult);
+        }
+
+        logger.LogInformation(
+            "Confirmed {SuccessCount} books (failed: {FailedCount}) to library {LibraryId}",
+            result.SuccessCount,
+            result.FailedCount,
+            id
+        );
+
+        return Ok(result);
     }
 }
