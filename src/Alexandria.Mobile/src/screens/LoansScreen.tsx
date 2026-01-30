@@ -1,23 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { getLoans } from '../services/api';
-import { Loan, LoanStatus } from '../types';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { getLoans, getLentOutBooks } from '../services/api';
+import { Loan, LoanStatus, LibraryBook, BookStatus } from '../types';
 
 export default function LoansScreen() {
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [lentBooks, setLentBooks] = useState<LibraryBook[]>([]);
   const [filter, setFilter] = useState<'all' | 'borrowed' | 'lent'>('all');
 
   useEffect(() => {
-    loadLoans();
+    loadData();
   }, [filter]);
 
-  const loadLoans = async () => {
+  const loadData = async () => {
     try {
-      const filterParam = filter === 'all' ? undefined : filter;
-      const data = await getLoans(filterParam);
-      setLoans(data);
+      if (filter === 'lent') {
+        // Load books marked as loaned out
+        const books = await getLentOutBooks();
+        setLentBooks(books);
+        setLoans([]);
+      } else {
+        // Load formal loan records
+        const filterParam = filter === 'all' ? undefined : filter;
+        const data = await getLoans(filterParam);
+        setLoans(data);
+        setLentBooks([]);
+      }
     } catch (error) {
-      console.error('Load loans error:', error);
+      console.error('Load data error:', error);
     }
   };
 
@@ -67,6 +77,33 @@ export default function LoansScreen() {
     </View>
   );
 
+  const renderLentBook = ({ item }: { item: LibraryBook }) => (
+    <View style={styles.loanCard}>
+      <View style={styles.bookRow}>
+        {item.book.coverImageUrl && (
+          <Image source={{ uri: item.book.coverImageUrl }} style={styles.bookCover} />
+        )}
+        <View style={styles.bookInfo}>
+          <Text style={styles.bookTitle}>{item.book.title}</Text>
+          {item.book.author && <Text style={styles.bookAuthor}>{item.book.author}</Text>}
+          {item.book.genre && <Text style={styles.genreText}>{item.book.genre}</Text>}
+        </View>
+      </View>
+      
+      <View style={styles.loanInfo}>
+        {item.loanNote ? (
+          <Text style={styles.loanNoteText}>Loaned to: {item.loanNote}</Text>
+        ) : (
+          <Text style={styles.infoText}>Loaned out (no borrower specified)</Text>
+        )}
+      </View>
+      
+      <View style={[styles.statusBadge, { backgroundColor: '#FF9800' }]}>
+        <Text style={styles.statusText}>Loaned Out</Text>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.filterBar}>
@@ -96,12 +133,27 @@ export default function LoansScreen() {
         </TouchableOpacity>
       </View>
       
-      <FlatList
-        data={loans}
-        renderItem={renderLoan}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-      />
+      {filter === 'lent' ? (
+        <FlatList
+          data={lentBooks}
+          renderItem={renderLentBook}
+          keyExtractor={(item) => `lent-${item.id}`}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No books currently loaned out</Text>
+          }
+        />
+      ) : (
+        <FlatList
+          data={loans}
+          renderItem={renderLoan}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No loans found</Text>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -149,6 +201,19 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  bookRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  bookCover: {
+    width: 50,
+    height: 75,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  bookInfo: {
+    flex: 1,
+  },
   bookTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -158,7 +223,11 @@ const styles = StyleSheet.create({
   bookAuthor: {
     fontSize: 14,
     color: '#B0B0B0',
-    marginBottom: 10,
+    marginBottom: 3,
+  },
+  genreText: {
+    fontSize: 12,
+    color: '#888',
   },
   loanInfo: {
     marginBottom: 10,
@@ -167,6 +236,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#B0B0B0',
     marginBottom: 3,
+  },
+  loanNoteText: {
+    fontSize: 14,
+    color: '#FF9800',
+    fontWeight: '500',
   },
   statusBadge: {
     alignSelf: 'flex-start',
@@ -178,5 +252,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '500',
+  },
+  emptyText: {
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 16,
   },
 });

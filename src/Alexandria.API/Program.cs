@@ -30,6 +30,9 @@ builder.Services.AddHttpClient("GoogleBooks", client =>
     client.BaseAddress = new Uri(builder.Configuration["GoogleBooks:BaseUrl"] ?? "https://www.googleapis.com/books/v1");
 });
 
+// Add default HttpClient for general use (e.g., Google OAuth verification)
+builder.Services.AddHttpClient();
+
 // Configure PostgreSQL database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=alexandria;Username=postgres;Password=postgres";
@@ -94,8 +97,23 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Add Cross-Origin headers for browser compatibility
+// app.Use(async (context, next) =>
+// {
+//     context.Response.Headers.Append("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+//     context.Response.Headers.Append("Cross-Origin-Embedder-Policy", "credentialless");
+//     await next();
+// });
+
+// CORS must be before other middleware to handle preflight requests
 app.UseCors("AllowAll");
+
+// Only redirect to HTTPS in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 
