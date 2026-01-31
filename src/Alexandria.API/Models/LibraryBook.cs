@@ -6,6 +6,7 @@ public class LibraryBook
     public int LibraryId { get; set; }
     public int BookId { get; set; }
     public BookStatus Status { get; set; }
+    public string? LoanNote { get; set; }
     public DateTime AddedAt { get; set; }
 
     // Navigation properties

@@ -17,10 +17,12 @@ public class BooksController(
 ) : ControllerBase
 {
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<BookDto>>> SearchBooks(
         [FromQuery] BookSearchRequest request,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50
+        [FromQuery] int pageSize = 50,
+        CancellationToken cancellationToken = default
     )
     {
         // Normalize ISBN if provided
@@ -29,9 +31,58 @@ public class BooksController(
             request.Isbn = IsbnHelper.NormalizeToIsbn13(request.Isbn) ?? request.Isbn;
         }
 
+        // First, search local database
         var books = await bookService.SearchBooksAsync(request, page, pageSize);
-        return Ok(books);
+        
+        // If local results found, return them
+        if (books.Any())
+        {
+            return Ok(books);
+        }
+
+        // No local results - search external APIs
+        logger.LogInformation("No local results found, searching external APIs for query: {Query}", request.Query);
+
+        // If ISBN provided, do ISBN lookup
+        if (!string.IsNullOrEmpty(request.Isbn))
+        {
+            var isbnResult = await bookLookupService.LookupByIsbnAsync(request.Isbn, cancellationToken);
+            if (isbnResult is not null)
+            {
+                return Ok(new[] { MapPreviewToDto(isbnResult) });
+            }
+        }
+
+        // Search by title/author
+        if (!string.IsNullOrEmpty(request.Query) || !string.IsNullOrEmpty(request.Author))
+        {
+            var searchQuery = request.Query ?? request.Author ?? "";
+            var externalResults = await bookLookupService.SearchAsync(
+                searchQuery,
+                request.Author,
+                pageSize,
+                cancellationToken
+            );
+            
+            return Ok(externalResults.Select(MapPreviewToDto));
+        }
+
+        return Ok(Array.Empty<BookDto>());
     }
+
+    private static BookDto MapPreviewToDto(BookPreviewDto preview) => new()
+    {
+        Id = preview.ExistingBookId ?? 0,
+        Title = preview.Title,
+        Author = preview.Author,
+        Isbn = preview.Isbn,
+        Publisher = preview.Publisher,
+        PublishedYear = preview.PublishedYear,
+        Description = preview.Description,
+        CoverImageUrl = preview.CoverImageUrl,
+        Genre = preview.Genre,
+        PageCount = preview.PageCount
+    };
 
     [HttpGet("{id}")]
     public async Task<ActionResult<BookDto>> GetBook(int id)

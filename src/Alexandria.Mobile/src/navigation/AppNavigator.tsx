@@ -1,5 +1,5 @@
-import React from 'react';
-import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, StyleSheet, View, useWindowDimensions, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,6 +10,7 @@ import LibrariesScreen from '../screens/LibrariesScreen';
 import LoansScreen from '../screens/LoansScreen';
 import ImageSearchScreen from '../screens/ImageSearchScreen';
 import BookshelfScanScreen from '../screens/BookshelfScanScreen';
+import { getAuthToken, logout } from '../services/api';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -17,20 +18,42 @@ const Tab = createBottomTabNavigator();
 // Maximum content width for web to prevent overly wide layouts
 const MAX_CONTENT_WIDTH = 1200;
 
-function MainTabs() {
+function LogoutButton({ navigation }: { navigation: any }) {
+  const handleLogout = async () => {
+    await logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  };
+
+  return (
+    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <Text style={styles.logoutButtonText}>Logout</Text>
+    </TouchableOpacity>
+  );
+}
+
+function MainTabs({ navigation }: { navigation: any }) {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#2196F3',
+        tabBarActiveTintColor: '#E5A823',
         tabBarInactiveTintColor: '#666',
-        headerShown: true,
-        // Ensure tab bar is always visible and doesn't get cut off
         tabBarStyle: {
+          backgroundColor: '#1E1E1E',
+          borderTopColor: '#333',
           position: 'relative',
           ...(Platform.OS === 'web' && {
             minHeight: 60,
           }),
         },
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#1E1E1E',
+        },
+        headerTintColor: '#FFFFFF',
+        headerRight: () => <LogoutButton navigation={navigation} />,
       }}
     >
       <Tab.Screen
@@ -70,13 +93,42 @@ function ResponsiveContainer({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppNavigator() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await getAuthToken();
+      setIsAuthenticated(!!token);
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E5A823" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ResponsiveContainer>
           <NavigationContainer>
             <Stack.Navigator
-              initialRouteName="Login"
+              initialRouteName={isAuthenticated ? "Main" : "Login"}
               screenOptions={{
                 headerShown: false,
                 // Ensure proper card styling for web
@@ -98,7 +150,9 @@ export default function AppNavigator() {
                 component={ImageSearchScreen}
                 options={{
                   headerShown: true,
-                  title: 'Scan a Book'
+                  title: 'Scan a Book',
+                  headerStyle: { backgroundColor: '#1E1E1E' },
+                  headerTintColor: '#FFFFFF',
                 }}
               />
               <Stack.Screen
@@ -106,7 +160,9 @@ export default function AppNavigator() {
                 component={BookshelfScanScreen}
                 options={{
                   headerShown: true,
-                  title: 'Scan Bookshelf'
+                  title: 'Scan Bookshelf',
+                  headerStyle: { backgroundColor: '#1E1E1E' },
+                  headerTintColor: '#FFFFFF',
                 }}
               />
             </Stack.Navigator>
@@ -120,17 +176,17 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#121212',
   },
   webContainer: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0A0A0A',
   },
   contentContainer: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: '#121212',
     // Add subtle shadow on web for visual separation
     ...(Platform.OS === 'web' && {
       shadowColor: '#000',
@@ -138,5 +194,23 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.1,
       shadowRadius: 8,
     }),
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#121212',
+  },
+  logoutButton: {
+    marginRight: 15,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#333',
+    borderRadius: 6,
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

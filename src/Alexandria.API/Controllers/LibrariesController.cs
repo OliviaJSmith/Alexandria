@@ -25,6 +25,14 @@ public class LibrariesController(
         return Ok(libraries);
     }
 
+    [HttpGet("lent-out")]
+    public async Task<ActionResult<IEnumerable<LibraryBookDto>>> GetLentOutBooks()
+    {
+        var userId = GetCurrentUserId();
+        var books = await libraryService.GetLentOutBooksAsync(userId);
+        return Ok(books);
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<LibraryDto>> GetLibrary(int id)
     {
@@ -94,6 +102,51 @@ public class LibrariesController(
             return NotFound("Book not found in library");
 
         return NoContent();
+    }
+
+    [HttpPatch("{libraryId}/books/{libraryBookId}")]
+    public async Task<ActionResult<LibraryBookDto>> UpdateLibraryBook(
+        int libraryId, 
+        int libraryBookId, 
+        UpdateLibraryBookRequest request)
+    {
+        var userId = GetCurrentUserId();
+
+        if (!await libraryService.UserOwnsLibraryAsync(libraryId, userId))
+            return Forbid();
+
+        var result = await libraryService.UpdateLibraryBookAsync(libraryId, libraryBookId, userId, request);
+
+        if (result is null)
+            return NotFound("Book not found in library");
+
+        return Ok(result);
+    }
+
+    [HttpPost("{libraryId}/books/{libraryBookId}/move")]
+    public async Task<ActionResult<LibraryBookDto>> MoveBookToLibrary(
+        int libraryId, 
+        int libraryBookId, 
+        MoveBookToLibraryRequest request)
+    {
+        var userId = GetCurrentUserId();
+
+        if (!await libraryService.UserOwnsLibraryAsync(libraryId, userId))
+            return Forbid();
+
+        if (!await libraryService.UserOwnsLibraryAsync(request.TargetLibraryId, userId))
+            return Forbid();
+
+        var result = await libraryService.MoveBookToLibraryAsync(
+            libraryId, 
+            libraryBookId, 
+            request.TargetLibraryId, 
+            userId);
+
+        if (result is null)
+            return NotFound("Book not found in library");
+
+        return Ok(result);
     }
 
     /// <summary>

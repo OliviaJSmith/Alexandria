@@ -31,6 +31,7 @@ export interface LibraryBook {
   libraryId: number;
   book: Book;
   status: BookStatus;
+  loanNote?: string;
   addedAt: string;
 }
 
