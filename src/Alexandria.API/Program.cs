@@ -15,6 +15,7 @@ builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<ILoanService, LoanService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IBookLookupService, BookLookupService>();
 builder.Services.AddScoped<IOcrService, AzureOcrService>();
 
@@ -30,18 +31,27 @@ builder.Services.AddHttpClient("GoogleBooks", client =>
     client.BaseAddress = new Uri(builder.Configuration["GoogleBooks:BaseUrl"] ?? "https://www.googleapis.com/books/v1");
 });
 
-// Configure PostgreSQL database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Database=alexandria;Username=postgres;Password=postgres";
-builder.Services.AddDbContext<AlexandriaDbContext>(options =>
-    options.UseNpgsql(connectionString));
+// Configure database - use in-memory for development if PostgreSQL is not available
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
+
+if (useInMemory || string.IsNullOrEmpty(connectionString) || !connectionString.Contains("Password=") || connectionString.Contains("Password=;") || connectionString.EndsWith("Password="))
+{
+    builder.Services.AddDbContext<AlexandriaDbContext>(options =>
+        options.UseInMemoryDatabase("AlexandriaDb"));
+}
+else
+{
+    builder.Services.AddDbContext<AlexandriaDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 // Configure Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "YourSecretKeyForAuthenticationOfAlexandria2026";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Alexandria";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "AlexandriaUsers";
 
-builder.Services.AddAuthentication(options =>
+var authBuilder = builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -58,12 +68,19 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
-})
-.AddGoogle(options =>
-{
-    options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
-    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
 });
+
+// Only add Google authentication if credentials are configured
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+{
+    authBuilder.AddGoogle(options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+    });
+}
 
 builder.Services.AddAuthorization();
 

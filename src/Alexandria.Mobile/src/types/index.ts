@@ -2,6 +2,13 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  userName?: string;
+  profilePictureUrl?: string;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  userName?: string;
   profilePictureUrl?: string;
 }
 
@@ -37,7 +44,7 @@ export interface LibraryBook {
 export enum BookStatus {
   Available = 0,
   CheckedOut = 1,
-  WaitingToBeLoanedOut = 2
+  WaitingToBeLoanedOut = 2,
 }
 
 export enum LoanStatus {
@@ -45,7 +52,7 @@ export enum LoanStatus {
   Active = 1,
   Returned = 2,
   Overdue = 3,
-  Cancelled = 4
+  Cancelled = 4,
 }
 
 export interface Loan {
@@ -73,7 +80,7 @@ export enum BookSource {
   Local = 0,
   OpenLibrary = 1,
   GoogleBooks = 2,
-  OcrText = 3
+  OcrText = 3,
 }
 
 export interface BookPreview {
@@ -112,4 +119,3 @@ export interface ConfirmBooksResult {
   successCount: number;
   failedCount: number;
 }
-

@@ -9,6 +9,8 @@ import {
   BookPreview,
   ConfirmBooksRequest,
   ConfirmBooksResult,
+  User,
+  UpdateUserRequest,
 } from "../types";
 import { config } from "../config";
 
@@ -235,4 +237,40 @@ export const getAuthToken = async (): Promise<string | null> => {
 
 export const removeAuthToken = async (): Promise<void> => {
   await AsyncStorage.removeItem("authToken");
+};
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+export const loginWithGoogle = async (
+  googleAccessToken: string,
+): Promise<AuthResponse> => {
+  const response = await api.post("/auth/google", {
+    accessToken: googleAccessToken,
+  });
+  return response.data;
+};
+
+// Users API
+export const getCurrentUser = async (): Promise<User> => {
+  const response = await api.get("/users/me");
+  return response.data;
+};
+
+export const updateCurrentUser = async (
+  data: UpdateUserRequest,
+): Promise<User> => {
+  const response = await api.put("/users/me", data);
+  return response.data;
+};
+
+export const checkUserNameAvailability = async (
+  userName: string,
+): Promise<boolean> => {
+  const response = await api.get("/users/check-username", {
+    params: { userName },
+  });
+  return response.data.available;
 };
