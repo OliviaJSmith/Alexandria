@@ -32,8 +32,8 @@ export default {
     ],
     scheme: "alexandria",
     extra: {
-      apiBaseUrl: process.env.API_BASE_URL || "http://localhost:5000/api",
-      googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID || "",
+      apiBaseUrl: process.env.API_BASE_URL || "http://localhost:5274/api",
+      googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID || "1079278733225-2a62r2vj87e7gr0fcrlgefn51q8hbt0q.apps.googleusercontent.com",
       googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID || "",
       googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID || "",
     }

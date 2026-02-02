@@ -100,3 +100,4 @@ logs/
 secrets.json
 *.pfx
 *.keystore
+.azure
