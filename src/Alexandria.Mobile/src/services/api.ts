@@ -105,7 +105,7 @@ export const getLibraryBooks = async (
 };
 
 export const getLentOutBooks = async (): Promise<LibraryBook[]> => {
-  const response = await api.get('/libraries/lent-out');
+  const response = await api.get("/libraries/lent-out");
   return response.data;
 };
 
@@ -137,7 +137,10 @@ export const updateLibraryBook = async (
     loanNote?: string;
   },
 ): Promise<LibraryBook> => {
-  const response = await api.patch(`/libraries/${libraryId}/books/${libraryBookId}`, updates);
+  const response = await api.patch(
+    `/libraries/${libraryId}/books/${libraryBookId}`,
+    updates,
+  );
   return response.data;
 };
 
@@ -146,9 +149,12 @@ export const moveBookToLibrary = async (
   libraryBookId: number,
   targetLibraryId: number,
 ): Promise<LibraryBook> => {
-  const response = await api.post(`/libraries/${sourceLibraryId}/books/${libraryBookId}/move`, {
-    targetLibraryId,
-  });
+  const response = await api.post(
+    `/libraries/${sourceLibraryId}/books/${libraryBookId}/move`,
+    {
+      targetLibraryId,
+    },
+  );
   return response.data;
 };
 
@@ -264,23 +270,31 @@ export interface AuthResponse {
   };
 }
 
-export const loginWithGoogle = async (googleAccessToken: string): Promise<AuthResponse> => {
-  console.log('loginWithGoogle: Making request to /auth/google');
-  console.log('loginWithGoogle: Token length:', googleAccessToken?.length);
+export const loginWithGoogle = async (
+  googleAccessToken: string,
+): Promise<AuthResponse> => {
+  console.log("loginWithGoogle: Making request to /auth/google");
+  console.log("loginWithGoogle: Token length:", googleAccessToken?.length);
   try {
-    const response = await api.post("/auth/google", { accessToken: googleAccessToken });
-    console.log('loginWithGoogle: Response received', response.status);
+    const response = await api.post("/auth/google", {
+      accessToken: googleAccessToken,
+    });
+    console.log("loginWithGoogle: Response received", response.status);
     // Store the JWT token
     await AsyncStorage.setItem("authToken", response.data.token);
-    console.log('loginWithGoogle: Token stored');
+    console.log("loginWithGoogle: Token stored");
     return response.data;
   } catch (error: any) {
-    console.error('loginWithGoogle: Request failed', error?.response?.status, error?.response?.data);
+    console.error(
+      "loginWithGoogle: Request failed",
+      error?.response?.status,
+      error?.response?.data,
+    );
     throw error;
   }
 };
 
-export const getCurrentUser = async (): Promise<AuthResponse['user']> => {
+export const getCurrentUser = async (): Promise<AuthResponse["user"]> => {
   const response = await api.get("/auth/me");
   return response.data;
 };
