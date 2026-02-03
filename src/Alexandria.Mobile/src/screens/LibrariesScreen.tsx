@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ScrollView, Image } from 'react-native';
-import { getLibraries, getLibraryBooks, removeBookFromLibrary, updateLibraryBook, moveBookToLibrary } from '../services/api';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ScrollView, Image, Platform, Switch } from 'react-native';
+import { getLibraries, getLibraryBooks, removeBookFromLibrary, updateLibraryBook, moveBookToLibrary, createLibrary } from '../services/api';
 import { Library, LibraryBook, BookStatus } from '../types';
 
 const GENRES = [
@@ -22,7 +22,15 @@ export default function LibrariesScreen({ navigation }: any) {
   const [editGenre, setEditGenre] = useState<string>('');
   const [editLoanNote, setEditLoanNote] = useState<string>('');
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Create library modal state
+  const [showCreateLibraryModal, setShowCreateLibraryModal] = useState(false);
+  const [newLibraryName, setNewLibraryName] = useState('');
+  const [newLibraryIsPublic, setNewLibraryIsPublic] = useState(false);
+  const [creatingLibrary, setCreatingLibrary] = useState(false);
 
   useEffect(() => {
     loadLibraries();
@@ -34,6 +42,38 @@ export default function LibrariesScreen({ navigation }: any) {
       setLibraries(data);
     } catch (error) {
       console.error('Load libraries error:', error);
+    }
+  };
+
+  const handleCreateLibrary = async () => {
+    if (!newLibraryName.trim()) {
+      if (Platform.OS === 'web') {
+        window.alert('Please enter a library name');
+      } else {
+        Alert.alert('Error', 'Please enter a library name');
+      }
+      return;
+    }
+
+    setCreatingLibrary(true);
+    try {
+      await createLibrary({
+        name: newLibraryName.trim(),
+        isPublic: newLibraryIsPublic,
+      });
+      setShowCreateLibraryModal(false);
+      setNewLibraryName('');
+      setNewLibraryIsPublic(false);
+      await loadLibraries();
+    } catch (error) {
+      console.error('Create library error:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Failed to create library');
+      } else {
+        Alert.alert('Error', 'Failed to create library');
+      }
+    } finally {
+      setCreatingLibrary(false);
     }
   };
 
@@ -60,30 +100,39 @@ export default function LibrariesScreen({ navigation }: any) {
   };
 
   const handleDeleteBook = () => {
+    if (!editingBook || !selectedLibrary) {
+      console.error('handleDeleteBook: Missing editingBook or selectedLibrary', { 
+        editingBook: !!editingBook, 
+        selectedLibrary: !!selectedLibrary 
+      });
+      return;
+    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteBook = async () => {
     if (!editingBook || !selectedLibrary) return;
     
-    Alert.alert(
-      'Delete Book',
-      `Are you sure you want to remove "${editingBook.book.title}" from this library?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeBookFromLibrary(selectedLibrary.id, editingBook.id);
-              setShowEditModal(false);
-              setEditingBook(null);
-              await loadLibraryBooks(selectedLibrary.id);
-            } catch (error) {
-              console.error('Delete book error:', error);
-              Alert.alert('Error', 'Failed to delete book');
-            }
-          },
-        },
-      ]
-    );
+    setDeleting(true);
+    try {
+      console.log('Deleting book:', { libraryId: selectedLibrary.id, libraryBookId: editingBook.id });
+      await removeBookFromLibrary(selectedLibrary.id, editingBook.id);
+      console.log('Book deleted successfully');
+      setShowDeleteConfirm(false);
+      setShowEditModal(false);
+      setEditingBook(null);
+      await loadLibraryBooks(selectedLibrary.id);
+    } catch (error: any) {
+      console.error('Delete book error:', error);
+      console.error('Delete book error response:', error?.response?.data);
+      if (Platform.OS === 'web') {
+        window.alert('Failed to delete book');
+      } else {
+        Alert.alert('Error', 'Failed to delete book');
+      }
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSaveChanges = async () => {
@@ -169,6 +218,32 @@ export default function LibrariesScreen({ navigation }: any) {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{selectedLibrary.name}</Text>
         </View>
+        
+        {/* Add Books Section */}
+        <View style={styles.addBooksSection}>
+          <Text style={styles.addBooksSectionTitle}>Add Books</Text>
+          <View style={styles.addBooksButtons}>
+            <TouchableOpacity 
+              style={styles.addBookButton}
+              onPress={() => navigation.navigate('Search')}
+            >
+              <Text style={styles.addBookButtonText}>🔍 Search</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.addBookButton}
+              onPress={() => navigation.navigate('ImageSearch')}
+            >
+              <Text style={styles.addBookButtonText}>📷 Scan Book</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.addBookButton}
+              onPress={() => navigation.navigate('BookshelfScan')}
+            >
+              <Text style={styles.addBookButtonText}>📚 Scan Shelf</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <FlatList
           data={libraryBooks}
           renderItem={renderBook}
@@ -259,13 +334,19 @@ export default function LibrariesScreen({ navigation }: any) {
                 <View style={styles.actionButtons}>
                   <TouchableOpacity
                     style={styles.moveButton}
-                    onPress={() => setShowMoveModal(true)}
+                    onPress={() => {
+                      setShowEditModal(false);
+                      setShowMoveModal(true);
+                    }}
                   >
                     <Text style={styles.moveButtonText}>Move to Library</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.deleteButton}
-                    onPress={handleDeleteBook}
+                    onPress={() => {
+                      console.log('Delete button pressed');
+                      handleDeleteBook();
+                    }}
                   >
                     <Text style={styles.deleteButtonText}>Delete</Text>
                   </TouchableOpacity>
@@ -334,6 +415,36 @@ export default function LibrariesScreen({ navigation }: any) {
             </View>
           </View>
         </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal visible={showDeleteConfirm} transparent animationType="fade">
+          <View style={styles.deleteModalOverlay}>
+            <View style={styles.deleteConfirmModal}>
+              <Text style={styles.modalTitle}>Delete Book</Text>
+              <Text style={styles.deleteConfirmText}>
+                Are you sure you want to remove "{editingBook?.book.title}" from this library?
+              </Text>
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.deleteConfirmButton, deleting && styles.buttonDisabled]}
+                  onPress={confirmDeleteBook}
+                  disabled={deleting}
+                >
+                  <Text style={styles.deleteButtonText}>
+                    {deleting ? 'Deleting...' : 'Delete'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -354,12 +465,73 @@ export default function LibrariesScreen({ navigation }: any) {
           <Text style={[styles.toggleText, showPublic && styles.toggleTextActive]}>Public Libraries</Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Create Library Button - only show on My Libraries tab */}
+      {!showPublic && (
+        <TouchableOpacity 
+          style={styles.createLibraryButton}
+          onPress={() => setShowCreateLibraryModal(true)}
+        >
+          <Text style={styles.createLibraryButtonText}>+ Create New Library</Text>
+        </TouchableOpacity>
+      )}
+
       <FlatList
         data={libraries}
         renderItem={renderLibrary}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
       />
+
+      {/* Create Library Modal */}
+      <Modal visible={showCreateLibraryModal} transparent animationType="fade">
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.createLibraryModal}>
+            <Text style={styles.modalTitle}>Create New Library</Text>
+            
+            <TextInput
+              style={styles.createLibraryInput}
+              placeholder="Library name"
+              placeholderTextColor="#888"
+              value={newLibraryName}
+              onChangeText={setNewLibraryName}
+            />
+            
+            <View style={styles.publicToggle}>
+              <Text style={styles.publicToggleLabel}>Make library public</Text>
+              <Switch
+                value={newLibraryIsPublic}
+                onValueChange={setNewLibraryIsPublic}
+                trackColor={{ false: '#3C3C3C', true: '#4CAF50' }}
+                thumbColor={newLibraryIsPublic ? '#FFFFFF' : '#CCCCCC'}
+              />
+            </View>
+            
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowCreateLibraryModal(false);
+                  setNewLibraryName('');
+                  setNewLibraryIsPublic(false);
+                }}
+                disabled={creatingLibrary}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveButton, creatingLibrary && styles.buttonDisabled]}
+                onPress={handleCreateLibrary}
+                disabled={creatingLibrary}
+              >
+                <Text style={styles.saveButtonText}>
+                  {creatingLibrary ? 'Creating...' : 'Create'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -676,5 +848,106 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 12,
     marginTop: 4,
+  },
+  deleteConfirmModal: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  deleteConfirmText: {
+    color: '#CCCCCC',
+    fontSize: 16,
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+  deleteConfirmButton: {
+    flex: 1,
+    backgroundColor: '#F44336',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  createLibraryButton: {
+    backgroundColor: '#E5A823',
+    marginHorizontal: 15,
+    marginTop: 10,
+    marginBottom: 5,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  createLibraryButtonText: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  createLibraryModal: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+  },
+  createLibraryInput: {
+    backgroundColor: '#2C2C2C',
+    borderRadius: 8,
+    padding: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  publicToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  publicToggleLabel: {
+    color: '#CCCCCC',
+    fontSize: 16,
+  },
+  addBooksSection: {
+    backgroundColor: '#1E1E1E',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  addBooksSectionTitle: {
+    color: '#888',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  addBooksButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addBookButton: {
+    flex: 1,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3C3C3C',
+  },
+  addBookButtonText: {
+    color: '#E5A823',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -8,6 +8,7 @@ import LoginScreen from '../screens/LoginScreen';
 import BookSearchScreen from '../screens/BookSearchScreen';
 import LibrariesScreen from '../screens/LibrariesScreen';
 import LoansScreen from '../screens/LoansScreen';
+import FriendsScreen from '../screens/FriendsScreen';
 import ImageSearchScreen from '../screens/ImageSearchScreen';
 import BookshelfScanScreen from '../screens/BookshelfScanScreen';
 import { getAuthToken, logout } from '../services/api';
@@ -70,6 +71,11 @@ function MainTabs({ navigation }: { navigation: any }) {
         name="Loans"
         component={LoansScreen}
         options={{ title: 'Loans' }}
+      />
+      <Tab.Screen
+        name="Friends"
+        component={FriendsScreen}
+        options={{ title: 'Friends' }}
       />
     </Tab.Navigator>
   );

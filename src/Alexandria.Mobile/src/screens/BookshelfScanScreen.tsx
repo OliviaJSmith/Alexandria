@@ -13,7 +13,7 @@ import {
     FlatList,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { scanBookshelf, getLibraries, confirmBooksToLibrary } from '../services/api';
+import { scanBookshelf, getLibraries, confirmBooksToLibrary, createLibrary } from '../services/api';
 import { BookPreview, Library, BookSource } from '../types';
 
 export default function BookshelfScanScreen() {
@@ -25,6 +25,10 @@ export default function BookshelfScanScreen() {
     const [selectedLibraryId, setSelectedLibraryId] = useState<number | null>(null);
     const [showLibraryPicker, setShowLibraryPicker] = useState(false);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [showCreateLibrary, setShowCreateLibrary] = useState(false);
+    const [newLibraryName, setNewLibraryName] = useState('');
+    const [newLibraryIsPublic, setNewLibraryIsPublic] = useState(false);
+    const [creatingLibrary, setCreatingLibrary] = useState(false);
 
     useEffect(() => {
         loadLibraries();
@@ -39,6 +43,33 @@ export default function BookshelfScanScreen() {
             }
         } catch (error) {
             console.error('Failed to load libraries:', error);
+        }
+    };
+
+    const handleCreateLibrary = async () => {
+        if (!newLibraryName.trim()) {
+            Alert.alert('Error', 'Please enter a library name');
+            return;
+        }
+
+        setCreatingLibrary(true);
+        try {
+            const newLibrary = await createLibrary({
+                name: newLibraryName.trim(),
+                isPublic: newLibraryIsPublic,
+            });
+            setLibraries([...libraries, newLibrary]);
+            setSelectedLibraryId(newLibrary.id);
+            setShowCreateLibrary(false);
+            setShowLibraryPicker(false);
+            setNewLibraryName('');
+            setNewLibraryIsPublic(false);
+            Alert.alert('Success', `Library "${newLibrary.name}" created!`);
+        } catch (error) {
+            console.error('Failed to create library:', error);
+            Alert.alert('Error', 'Failed to create library. Please try again.');
+        } finally {
+            setCreatingLibrary(false);
         }
     };
 
@@ -128,12 +159,18 @@ export default function BookshelfScanScreen() {
     };
 
     const handleAddSelectedToLibrary = async () => {
+        console.log('handleAddSelectedToLibrary called');
+        console.log('selectedLibraryId:', selectedLibraryId);
+        console.log('bookPreviews:', bookPreviews.length);
+        
         if (!selectedLibraryId) {
             Alert.alert('Error', 'Please select a library first');
             return;
         }
 
         const selectedBooks = bookPreviews.filter(book => book.selected);
+        console.log('selectedBooks:', selectedBooks.length);
+        
         if (selectedBooks.length === 0) {
             Alert.alert('No Books Selected', 'Please select at least one book to add');
             return;
@@ -141,19 +178,33 @@ export default function BookshelfScanScreen() {
 
         setSaving(true);
         try {
+            console.log('Calling confirmBooksToLibrary...');
             const result = await confirmBooksToLibrary(selectedLibraryId, {
                 books: selectedBooks,
             });
+            console.log('Result:', result);
 
-            Alert.alert(
-                'Import Complete',
-                `Successfully added ${result.successCount} book(s) to your library.${result.failedCount > 0 ? `\n${result.failedCount} book(s) failed.` : ''
-                }`,
-                [{ text: 'OK', onPress: () => resetForm() }]
-            );
+            const message = `Successfully added ${result.successCount} book(s) to your library.${result.failedCount > 0 ? `\n${result.failedCount} book(s) failed.` : ''}`;
+            
+            // Use window.alert for web compatibility, then reset form
+            if (typeof window !== 'undefined' && window.alert) {
+                window.alert(message);
+                resetForm();
+            } else {
+                Alert.alert(
+                    'Import Complete',
+                    message,
+                    [{ text: 'OK', onPress: () => resetForm() }]
+                );
+            }
         } catch (error) {
             console.error('Add to library error:', error);
-            Alert.alert('Error', 'Failed to add books to library. Please try again.');
+            const errorMessage = 'Failed to add books to library. Please try again.';
+            if (typeof window !== 'undefined' && window.alert) {
+                window.alert(errorMessage);
+            } else {
+                Alert.alert('Error', errorMessage);
+            }
         } finally {
             setSaving(false);
         }
@@ -434,31 +485,94 @@ export default function BookshelfScanScreen() {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Select Library</Text>
                         <ScrollView style={styles.libraryList}>
-                            {libraries.map((library) => (
-                                <TouchableOpacity
-                                    key={library.id}
-                                    style={[
-                                        styles.libraryItem,
-                                        library.id === selectedLibraryId && styles.libraryItemSelected,
-                                    ]}
-                                    onPress={() => {
-                                        setSelectedLibraryId(library.id);
-                                        setShowLibraryPicker(false);
-                                    }}
-                                >
-                                    <Text style={styles.libraryItemText}>{library.name}</Text>
-                                    {library.isPublic && (
-                                        <Text style={styles.publicBadge}>Public</Text>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
+                            {libraries.length === 0 ? (
+                                <Text style={styles.noLibrariesText}>
+                                    You don't have any libraries yet. Create one below!
+                                </Text>
+                            ) : (
+                                libraries.map((library) => (
+                                    <TouchableOpacity
+                                        key={library.id}
+                                        style={[
+                                            styles.libraryItem,
+                                            library.id === selectedLibraryId && styles.libraryItemSelected,
+                                        ]}
+                                        onPress={() => {
+                                            setSelectedLibraryId(library.id);
+                                            setShowLibraryPicker(false);
+                                        }}
+                                    >
+                                        <Text style={styles.libraryItemText}>{library.name}</Text>
+                                        {library.isPublic && (
+                                            <Text style={styles.publicBadge}>Public</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))
+                            )}
                         </ScrollView>
+                        <TouchableOpacity
+                            style={styles.createLibraryButton}
+                            onPress={() => setShowCreateLibrary(true)}
+                        >
+                            <Text style={styles.createLibraryButtonText}>+ Create New Library</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.modalCloseButton}
                             onPress={() => setShowLibraryPicker(false)}
                         >
                             <Text style={styles.modalCloseText}>Close</Text>
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Create Library Modal */}
+            <Modal visible={showCreateLibrary} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Create New Library</Text>
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Library Name *</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={newLibraryName}
+                                onChangeText={setNewLibraryName}
+                                placeholder="My Library"
+                                autoFocus
+                            />
+                        </View>
+                        <TouchableOpacity
+                            style={styles.publicToggle}
+                            onPress={() => setNewLibraryIsPublic(!newLibraryIsPublic)}
+                        >
+                            <View style={[styles.checkboxInner, newLibraryIsPublic && styles.checkboxChecked]}>
+                                {newLibraryIsPublic && <Text style={styles.checkmark}>✓</Text>}
+                            </View>
+                            <Text style={styles.publicToggleText}>Make this library public</Text>
+                        </TouchableOpacity>
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={styles.modalCloseButton}
+                                onPress={() => {
+                                    setShowCreateLibrary(false);
+                                    setNewLibraryName('');
+                                    setNewLibraryIsPublic(false);
+                                }}
+                            >
+                                <Text style={styles.modalCloseText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.button, styles.primaryButton, creatingLibrary && styles.disabledButton]}
+                                onPress={handleCreateLibrary}
+                                disabled={creatingLibrary}
+                            >
+                                {creatingLibrary ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.primaryButtonText}>Create</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -780,7 +894,44 @@ const styles = StyleSheet.create({
         color: '#4A90A4',
         fontWeight: '500',
     },
+    noLibrariesText: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        paddingVertical: 20,
+    },
+    createLibraryButton: {
+        backgroundColor: '#E3F2FD',
+        paddingVertical: 14,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#4A90A4',
+        borderStyle: 'dashed',
+    },
+    createLibraryButtonText: {
+        fontSize: 16,
+        color: '#4A90A4',
+        fontWeight: '600',
+    },
+    publicToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    publicToggleText: {
+        marginLeft: 12,
+        fontSize: 16,
+        color: '#333',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
     modalCloseButton: {
+        flex: 1,
         backgroundColor: '#f5f5f5',
         paddingVertical: 14,
         borderRadius: 8,

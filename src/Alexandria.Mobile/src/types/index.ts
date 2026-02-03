@@ -38,7 +38,7 @@ export interface LibraryBook {
 export enum BookStatus {
   Available = 0,
   CheckedOut = 1,
-  WaitingToBeLoanedOut = 2
+  WaitingToBeLoanedOut = 2,
 }
 
 export enum LoanStatus {
@@ -46,7 +46,7 @@ export enum LoanStatus {
   Active = 1,
   Returned = 2,
   Overdue = 3,
-  Cancelled = 4
+  Cancelled = 4,
 }
 
 export interface Loan {
@@ -69,12 +69,18 @@ export interface Friend {
   createdAt: string;
 }
 
+export interface FriendRequest {
+  id: number;
+  fromUser: User;
+  createdAt: string;
+}
+
 // Book scanning types
 export enum BookSource {
   Local = 0,
   OpenLibrary = 1,
   GoogleBooks = 2,
-  OcrText = 3
+  OcrText = 3,
 }
 
 export interface BookPreview {
@@ -113,4 +119,3 @@ export interface ConfirmBooksResult {
   successCount: number;
   failedCount: number;
 }
-

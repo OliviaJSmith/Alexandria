@@ -1,9 +1,12 @@
-using System.Text;
-using System.Text.RegularExpressions;
 using Alexandria.API.DTOs;
 using Alexandria.API.Utilities;
 using Azure;
+using Azure.AI.OpenAI;
 using Azure.AI.Vision.ImageAnalysis;
+using Microsoft.Extensions.Options;
+using OpenAI.Chat;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Alexandria.API.Services;
 
@@ -11,18 +14,22 @@ namespace Alexandria.API.Services;
 /// OCR service using Azure Computer Vision for text and barcode extraction.
 /// </summary>
 public partial class AzureOcrService(
-    IConfiguration configuration,
-    ILogger<AzureOcrService> logger) : IOcrService
+    IOptions<AzureOpenAiOptions> options,
+    ILogger<AzureOcrService> logger
+) : IOcrService
 {
-    private readonly string _endpoint = configuration["AzureComputerVision:Endpoint"] ?? "";
-    private readonly string _apiKey = configuration["AzureComputerVision:ApiKey"] ?? "";
+    private readonly AzureOpenAiOptions _options = options.Value;
 
     [GeneratedRegex(@"(?:ISBN[:\-\s]*)?(\d[\d\-\s]{8,16}[\dXx])", RegexOptions.IgnoreCase)]
     private static partial Regex IsbnPatternRegex();
 
-    public async Task<OcrExtractionResult> ExtractSingleBookAsync(Stream imageStream, string fileName, CancellationToken cancellationToken = default)
+    public async Task<OcrExtractionResult> ExtractSingleBookAsync(
+        Stream imageStream,
+        string fileName,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (string.IsNullOrEmpty(_endpoint) || string.IsNullOrEmpty(_apiKey))
+        if (!_options.IsConfigured)
         {
             logger.LogWarning("Azure Computer Vision is not configured. Returning empty result.");
             return new OcrExtractionResult { Confidence = 0 };
@@ -34,27 +41,39 @@ public partial class AzureOcrService(
             var imageData = await ReadStreamToBinaryDataAsync(imageStream, cancellationToken);
 
             // For single books, use both Read (for text) and try to detect barcodes
-            var result = await client.AnalyzeAsync(
+            var analysisResult = await client.AnalyzeAsync(
                 imageData,
                 VisualFeatures.Read,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken
+            );
 
-            var extractedText = ExtractAllText(result.Value);
+            var extractedText = ExtractAllText(analysisResult.Value);
             var isbns = ExtractIsbns(extractedText);
             var titles = ExtractPotentialTitles(extractedText, isSingleBook: true);
-            var confidence = CalculateConfidence(result.Value);
+            var confidence = CalculateConfidence(analysisResult.Value);
 
             logger.LogInformation(
                 "Single book scan extracted {IsbnCount} ISBNs, {TitleCount} potential titles from {FileName}",
-                isbns.Count, titles.Count, fileName);
+                isbns.Count,
+                titles.Count,
+                fileName
+            );
 
-            return new OcrExtractionResult
+            var result = new OcrExtractionResult
             {
                 DetectedIsbns = isbns,
                 DetectedTitles = titles,
                 RawText = extractedText,
-                Confidence = confidence
+                Confidence = confidence,
             };
+
+            // Enhance with AI if deployment name is configured
+            if (_options.IsAiEnhancementEnabled)
+            {
+                result = await EnhanceWithAiAsync(result, isSingleBook: true, cancellationToken);
+            }
+
+            return result;
         }
         catch (RequestFailedException ex)
         {
@@ -68,9 +87,13 @@ public partial class AzureOcrService(
         }
     }
 
-    public async Task<OcrExtractionResult> ExtractBookshelfAsync(Stream imageStream, string fileName, CancellationToken cancellationToken = default)
+    public async Task<OcrExtractionResult> ExtractBookshelfAsync(
+        Stream imageStream,
+        string fileName,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (string.IsNullOrEmpty(_endpoint) || string.IsNullOrEmpty(_apiKey))
+        if (!_options.IsConfigured)
         {
             logger.LogWarning("Azure Computer Vision is not configured. Returning empty result.");
             return new OcrExtractionResult { Confidence = 0 };
@@ -82,27 +105,39 @@ public partial class AzureOcrService(
             var imageData = await ReadStreamToBinaryDataAsync(imageStream, cancellationToken);
 
             // For bookshelves, use Read API for dense text extraction
-            var result = await client.AnalyzeAsync(
+            var analysisResult = await client.AnalyzeAsync(
                 imageData,
                 VisualFeatures.Read,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken
+            );
 
-            var extractedText = ExtractAllText(result.Value);
+            var extractedText = ExtractAllText(analysisResult.Value);
             var isbns = ExtractIsbns(extractedText);
             var titles = ExtractPotentialTitles(extractedText, isSingleBook: false);
-            var confidence = CalculateConfidence(result.Value);
+            var confidence = CalculateConfidence(analysisResult.Value);
 
             logger.LogInformation(
                 "Bookshelf scan extracted {IsbnCount} ISBNs, {TitleCount} potential titles from {FileName}",
-                isbns.Count, titles.Count, fileName);
+                isbns.Count,
+                titles.Count,
+                fileName
+            );
 
-            return new OcrExtractionResult
+            var result = new OcrExtractionResult
             {
                 DetectedIsbns = isbns,
                 DetectedTitles = titles,
                 RawText = extractedText,
-                Confidence = confidence
+                Confidence = confidence,
             };
+
+            // Enhance with AI if deployment name is configured
+            if (_options.IsAiEnhancementEnabled)
+            {
+                result = await EnhanceWithAiAsync(result, isSingleBook: false, cancellationToken);
+            }
+
+            return result;
         }
         catch (RequestFailedException ex)
         {
@@ -119,11 +154,15 @@ public partial class AzureOcrService(
     private ImageAnalysisClient CreateClient()
     {
         return new ImageAnalysisClient(
-            new Uri(_endpoint),
-            new AzureKeyCredential(_apiKey));
+            new Uri(_options.Endpoint),
+            new AzureKeyCredential(_options.ApiKey)
+        );
     }
 
-    private static async Task<BinaryData> ReadStreamToBinaryDataAsync(Stream stream, CancellationToken cancellationToken)
+    private static async Task<BinaryData> ReadStreamToBinaryDataAsync(
+        Stream stream,
+        CancellationToken cancellationToken
+    )
     {
         using var memoryStream = new MemoryStream();
         await stream.CopyToAsync(memoryStream, cancellationToken);
@@ -179,20 +218,59 @@ public partial class AzureOcrService(
         var titles = new List<string>();
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.Trim())
-            .Where(l => l.Length >= 3 && l.Length <= 200) // Reasonable title length
+            .Where(l => l.Length >= 2 && l.Length <= 200) // Reasonable text length
             .Where(l => !IsLikelyNonTitle(l))
             .ToList();
 
         if (isSingleBook)
         {
-            // For single book, prioritize longer, more prominent text
-            // Often the title is one of the first lines or a prominent long line
-            var candidates = lines
-                .OrderByDescending(l => ScoreTitleCandidate(l))
-                .Take(3)
-                .ToList();
+            // For single book covers, text is often split across multiple lines
+            // Strategy: combine lines to form potential title+author combinations
 
-            titles.AddRange(candidates);
+            // First, add combinations of adjacent lines (common for multi-line titles)
+            for (int i = 0; i < lines.Count; i++)
+            {
+                // Single line as candidate
+                var singleLine = lines[i];
+                if (ScoreTitleCandidate(singleLine) > 0.3)
+                {
+                    titles.Add(singleLine);
+                }
+
+                // Combine 2 adjacent lines (e.g., "The" + "Hobbit" = "The Hobbit")
+                if (i + 1 < lines.Count)
+                {
+                    var twoLines = $"{lines[i]} {lines[i + 1]}";
+                    if (ScoreTitleCandidate(twoLines) > 0.3)
+                    {
+                        titles.Add(twoLines);
+                    }
+                }
+
+                // Combine 3 adjacent lines (for longer titles)
+                if (i + 2 < lines.Count)
+                {
+                    var threeLines = $"{lines[i]} {lines[i + 1]} {lines[i + 2]}";
+                    if (ScoreTitleCandidate(threeLines) > 0.3)
+                    {
+                        titles.Add(threeLines);
+                    }
+                }
+            }
+
+            // Also add the full combined text as a search candidate (useful for covers)
+            var fullText = string.Join(" ", lines);
+            if (fullText.Length >= 3 && fullText.Length <= 200)
+            {
+                titles.Add(fullText);
+            }
+
+            // Sort by score and take the best candidates
+            titles = titles
+                .Distinct()
+                .OrderByDescending(t => ScoreTitleCandidate(t))
+                .Take(5)
+                .ToList();
         }
         else
         {
@@ -221,9 +299,23 @@ public partial class AzureOcrService(
         // Common non-title patterns
         var nonTitlePatterns = new[]
         {
-            "isbn", "barcode", "price", "copyright", "published", "printed",
-            "all rights reserved", "edition", "www.", "http", ".com", ".org",
-            "chapter", "page", "index", "contents", "acknowledgments"
+            "isbn",
+            "barcode",
+            "price",
+            "copyright",
+            "published",
+            "printed",
+            "all rights reserved",
+            "edition",
+            "www.",
+            "http",
+            ".com",
+            ".org",
+            "chapter",
+            "page",
+            "index",
+            "contents",
+            "acknowledgments",
         };
 
         if (nonTitlePatterns.Any(p => lower.Contains(p)))
@@ -274,8 +366,8 @@ public partial class AzureOcrService(
             return 0;
 
         // Calculate average confidence from word confidences
-        var confidences = result.Read.Blocks
-            .SelectMany(b => b.Lines)
+        var confidences = result
+            .Read.Blocks.SelectMany(b => b.Lines)
             .SelectMany(l => l.Words)
             .Select(w => w.Confidence)
             .ToList();
@@ -284,5 +376,168 @@ public partial class AzureOcrService(
             return 0;
 
         return confidences.Average();
+    }
+
+    private AzureOpenAIClient CreateOpenAIClient()
+    {
+        return new AzureOpenAIClient(
+            new Uri(_options.Endpoint),
+            new AzureKeyCredential(_options.ApiKey)
+        );
+    }
+
+    private async Task<OcrExtractionResult> EnhanceWithAiAsync(
+        OcrExtractionResult ocrResult,
+        bool isSingleBook,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            var client = CreateOpenAIClient();
+            var chatClient = client.GetChatClient(_options.DeploymentName);
+
+            var systemPrompt = isSingleBook
+                ? """
+                You are an expert at analyzing OCR text from book covers. 
+                Your task is to extract and refine book information from raw OCR text.
+                Focus on identifying:
+                1. ISBN numbers (10 or 13 digits, may include hyphens)
+                2. Book title (main title, typically the largest text)
+                3. Author name
+
+                Return a JSON object with:
+                - "isbns": array of ISBN strings (normalized to ISBN-13 format)
+                - "titles": array of possible book titles (best candidate first)
+
+                Be conservative - only return high-confidence matches.
+                """
+                : """
+                You are an expert at analyzing OCR text from bookshelf images.
+                Your task is to extract book titles and ISBNs from spines of multiple books.
+
+                Return a JSON object with:
+                - "isbns": array of ISBN strings found (normalized to ISBN-13 format)
+                - "titles": array of book titles visible on spines
+
+                Focus on text that appears to be book titles, not publisher logos or decorative text.
+                """;
+
+            var userPrompt =
+                $"""
+                Raw OCR Text:
+                {ocrResult.RawText}
+
+                Previously detected ISBNs: {string.Join(", ", ocrResult.DetectedIsbns)}
+                Previously detected titles: {string.Join(", ", ocrResult.DetectedTitles)}
+
+                Please analyze this text and extract refined book information.
+                Return only valid JSON.
+                """;
+
+            var messages = new List<ChatMessage>
+            {
+                new SystemChatMessage(systemPrompt),
+                new UserChatMessage(userPrompt),
+            };
+
+            var response = await chatClient.CompleteChatAsync(messages, cancellationToken: cancellationToken);
+
+            var content = response.Value.Content[0].Text;
+
+            logger.LogInformation("AI enhancement response: {Response}", content);
+
+            // Parse the AI response and merge with existing results
+            var enhancedResult = ParseAiResponse(content, ocrResult);
+
+            return enhancedResult;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to enhance OCR results with AI, returning original results"
+            );
+            return ocrResult;
+        }
+    }
+
+    private OcrExtractionResult ParseAiResponse(string aiResponse, OcrExtractionResult originalResult)
+    {
+        try
+        {
+            // Try to parse JSON response
+            var jsonStart = aiResponse.IndexOf('{');
+            var jsonEnd = aiResponse.LastIndexOf('}');
+
+            if (jsonStart >= 0 && jsonEnd > jsonStart)
+            {
+                var jsonContent = aiResponse.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                var parsed = System.Text.Json.JsonDocument.Parse(jsonContent);
+                var root = parsed.RootElement;
+
+                // Start with AI-enhanced results (prioritized)
+                var enhancedIsbns = new List<string>();
+                var enhancedTitles = new List<string>();
+
+                // Extract ISBNs from AI response first (highest priority)
+                if (root.TryGetProperty("isbns", out var isbnsElement) && isbnsElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var isbn in isbnsElement.EnumerateArray())
+                    {
+                        var isbnValue = isbn.GetString();
+                        if (!string.IsNullOrEmpty(isbnValue))
+                        {
+                            enhancedIsbns.Add(isbnValue);
+                        }
+                    }
+                }
+
+                // Add original ISBNs that aren't already in AI results
+                foreach (var originalIsbn in originalResult.DetectedIsbns)
+                {
+                    if (!enhancedIsbns.Contains(originalIsbn))
+                    {
+                        enhancedIsbns.Add(originalIsbn);
+                    }
+                }
+
+                // Extract titles from AI response first (highest priority)
+                if (root.TryGetProperty("titles", out var titlesElement) && titlesElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var title in titlesElement.EnumerateArray())
+                    {
+                        var titleValue = title.GetString();
+                        if (!string.IsNullOrEmpty(titleValue))
+                        {
+                            enhancedTitles.Add(titleValue);
+                        }
+                    }
+                }
+
+                // Add original titles that aren't already in AI results
+                foreach (var originalTitle in originalResult.DetectedTitles)
+                {
+                    if (!enhancedTitles.Contains(originalTitle, StringComparer.OrdinalIgnoreCase))
+                    {
+                        enhancedTitles.Add(originalTitle);
+                    }
+                }
+
+                return new OcrExtractionResult
+                {
+                    DetectedIsbns = enhancedIsbns.Distinct().ToList(),
+                    DetectedTitles = enhancedTitles.Distinct().ToList(),
+                    RawText = originalResult.RawText,
+                    Confidence = originalResult.Confidence,
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to parse AI response, using original results");
+        }
+
+        return originalResult;
     }
 }

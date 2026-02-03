@@ -1,11 +1,14 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import {
   Book,
   Library,
   LibraryBook,
   Loan,
   Friend,
+  FriendRequest,
+  User,
   BookPreview,
   ConfirmBooksRequest,
   ConfirmBooksResult,
@@ -105,7 +108,7 @@ export const getLibraryBooks = async (
 };
 
 export const getLentOutBooks = async (): Promise<LibraryBook[]> => {
-  const response = await api.get('/libraries/lent-out');
+  const response = await api.get("/libraries/lent-out");
   return response.data;
 };
 
@@ -113,10 +116,12 @@ export const addBookToLibrary = async (
   libraryId: number,
   bookId: number,
   status: number = 0,
+  forceAdd: boolean = false,
 ): Promise<LibraryBook> => {
   const response = await api.post(`/libraries/${libraryId}/books`, {
     bookId,
     status,
+    forceAdd,
   });
   return response.data;
 };
@@ -137,7 +142,10 @@ export const updateLibraryBook = async (
     loanNote?: string;
   },
 ): Promise<LibraryBook> => {
-  const response = await api.patch(`/libraries/${libraryId}/books/${libraryBookId}`, updates);
+  const response = await api.patch(
+    `/libraries/${libraryId}/books/${libraryBookId}`,
+    updates,
+  );
   return response.data;
 };
 
@@ -146,9 +154,12 @@ export const moveBookToLibrary = async (
   libraryBookId: number,
   targetLibraryId: number,
 ): Promise<LibraryBook> => {
-  const response = await api.post(`/libraries/${sourceLibraryId}/books/${libraryBookId}/move`, {
-    targetLibraryId,
-  });
+  const response = await api.post(
+    `/libraries/${sourceLibraryId}/books/${libraryBookId}/move`,
+    {
+      targetLibraryId,
+    },
+  );
   return response.data;
 };
 
@@ -190,6 +201,25 @@ export const getFriends = async (): Promise<Friend[]> => {
   return response.data;
 };
 
+export const getPendingFriendRequests = async (): Promise<FriendRequest[]> => {
+  const response = await api.get("/friends/requests");
+  return response.data;
+};
+
+export const searchUserByEmail = async (
+  email: string,
+): Promise<User | null> => {
+  try {
+    const response = await api.get("/friends/search", { params: { email } });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+};
+
 export const sendFriendRequest = async (friendId: number): Promise<void> => {
   await api.post(`/friends/${friendId}`);
 };
@@ -205,15 +235,38 @@ export const removeFriend = async (friendshipId: number): Promise<void> => {
 };
 
 // Book Scanning API
+const createImageFormData = async (
+  imageUri: string,
+  fieldName: string,
+  fileName: string,
+): Promise<FormData> => {
+  const formData = new FormData();
+
+  if (Platform.OS === "web") {
+    // On web, fetch the blob from the URI (which is a blob URL or data URL)
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+    formData.append(fieldName, blob, fileName);
+  } else {
+    // On native, use the React Native style object
+    formData.append(fieldName, {
+      uri: imageUri,
+      type: "image/jpeg",
+      name: fileName,
+    } as unknown as Blob);
+  }
+
+  return formData;
+};
+
 export const scanSingleBook = async (
   imageUri: string,
 ): Promise<BookPreview> => {
-  const formData = new FormData();
-  formData.append("image", {
-    uri: imageUri,
-    type: "image/jpeg",
-    name: "book-image.jpg",
-  } as unknown as Blob);
+  const formData = await createImageFormData(
+    imageUri,
+    "image",
+    "book-image.jpg",
+  );
 
   const response = await api.post("/books/scan-single", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -224,12 +277,11 @@ export const scanSingleBook = async (
 export const scanBookshelf = async (
   imageUri: string,
 ): Promise<BookPreview[]> => {
-  const formData = new FormData();
-  formData.append("image", {
-    uri: imageUri,
-    type: "image/jpeg",
-    name: "bookshelf-image.jpg",
-  } as unknown as Blob);
+  const formData = await createImageFormData(
+    imageUri,
+    "image",
+    "bookshelf-image.jpg",
+  );
 
   const response = await api.post("/books/scan-bookshelf", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -246,11 +298,20 @@ export const confirmBooksToLibrary = async (
   libraryId: number,
   request: ConfirmBooksRequest,
 ): Promise<ConfirmBooksResult> => {
-  const response = await api.post(
-    `/libraries/${libraryId}/confirm-books`,
-    request,
-  );
-  return response.data;
+  console.log("confirmBooksToLibrary called with libraryId:", libraryId);
+  console.log("Request payload:", JSON.stringify(request, null, 2));
+  try {
+    const response = await api.post(
+      `/libraries/${libraryId}/confirm-books`,
+      request,
+    );
+    console.log("confirmBooksToLibrary response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("confirmBooksToLibrary error:", error);
+    console.error("Error response:", error.response?.data);
+    throw error;
+  }
 };
 
 // Authentication
@@ -264,23 +325,31 @@ export interface AuthResponse {
   };
 }
 
-export const loginWithGoogle = async (googleAccessToken: string): Promise<AuthResponse> => {
-  console.log('loginWithGoogle: Making request to /auth/google');
-  console.log('loginWithGoogle: Token length:', googleAccessToken?.length);
+export const loginWithGoogle = async (
+  googleAccessToken: string,
+): Promise<AuthResponse> => {
+  console.log("loginWithGoogle: Making request to /auth/google");
+  console.log("loginWithGoogle: Token length:", googleAccessToken?.length);
   try {
-    const response = await api.post("/auth/google", { accessToken: googleAccessToken });
-    console.log('loginWithGoogle: Response received', response.status);
+    const response = await api.post("/auth/google", {
+      accessToken: googleAccessToken,
+    });
+    console.log("loginWithGoogle: Response received", response.status);
     // Store the JWT token
     await AsyncStorage.setItem("authToken", response.data.token);
-    console.log('loginWithGoogle: Token stored');
+    console.log("loginWithGoogle: Token stored");
     return response.data;
   } catch (error: any) {
-    console.error('loginWithGoogle: Request failed', error?.response?.status, error?.response?.data);
+    console.error(
+      "loginWithGoogle: Request failed",
+      error?.response?.status,
+      error?.response?.data,
+    );
     throw error;
   }
 };
 
-export const getCurrentUser = async (): Promise<AuthResponse['user']> => {
+export const getCurrentUser = async (): Promise<AuthResponse["user"]> => {
   const response = await api.get("/auth/me");
   return response.data;
 };
