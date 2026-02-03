@@ -13,7 +13,6 @@ import {
   getCurrentUser,
   updateCurrentUser,
   checkUserNameAvailability,
-  removeAuthToken,
 } from "../services/api";
 import { User } from "../types";
 
@@ -23,6 +22,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [userNameAvailable, setUserNameAvailable] = useState<boolean | null>(
     null,
   );
@@ -120,6 +120,7 @@ export default function ProfileScreen({ navigation }: any) {
         userName: userName.trim() || undefined,
       });
       setUser(updatedUser);
+      setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully");
     } catch (error: any) {
       console.error("Failed to update profile:", error);
@@ -130,18 +131,11 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await removeAuthToken();
-          navigation.replace("Login");
-        },
-      },
-    ]);
+  const handleCancel = () => {
+    setUserName(user?.userName || "");
+    setName(user?.name || "");
+    setUserNameAvailable(null);
+    setIsEditing(false);
   };
 
   if (loading) {
@@ -154,67 +148,96 @@ export default function ProfileScreen({ navigation }: any) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Profile</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Profile</Text>
+        {!isEditing && (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => setIsEditing(true)}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <View style={styles.infoSection}>
         <Text style={styles.label}>Email</Text>
-        <Text style={styles.emailText}>{user?.email}</Text>
+        <Text style={styles.valueText}>{user?.email}</Text>
       </View>
 
-      <View style={styles.inputSection}>
+      <View style={styles.infoSection}>
         <Text style={styles.label}>Display Name</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Your display name"
-          placeholderTextColor="#666"
-        />
-      </View>
-
-      <View style={styles.inputSection}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          style={styles.input}
-          value={userName}
-          onChangeText={handleUserNameChange}
-          placeholder="Choose a unique username"
-          placeholderTextColor="#666"
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <View style={styles.userNameStatus}>
-          {checkingUserName && (
-            <Text style={styles.checkingText}>Checking availability...</Text>
-          )}
-          {!checkingUserName &&
-            userNameAvailable === true &&
-            userName.trim() && (
-              <Text style={styles.availableText}>✓ Username is available</Text>
-            )}
-          {!checkingUserName && userNameAvailable === false && (
-            <Text style={styles.unavailableText}>✗ Username is taken</Text>
-          )}
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.saveButton, saving && styles.buttonDisabled]}
-        onPress={handleSave}
-        disabled={saving || userNameAvailable === false}
-      >
-        {saving ? (
-          <ActivityIndicator color="#1A1A1A" />
+        {isEditing ? (
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Your display name"
+            placeholderTextColor="#666"
+          />
         ) : (
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+          <Text style={styles.valueText}>{user?.name || "Not set"}</Text>
         )}
-      </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
+      <View style={styles.infoSection}>
+        <Text style={styles.label}>Username</Text>
+        {isEditing ? (
+          <>
+            <TextInput
+              style={styles.input}
+              value={userName}
+              onChangeText={handleUserNameChange}
+              placeholder="Choose a unique username"
+              placeholderTextColor="#666"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <View style={styles.userNameStatus}>
+              {checkingUserName && (
+                <Text style={styles.checkingText}>
+                  Checking availability...
+                </Text>
+              )}
+              {!checkingUserName &&
+                userNameAvailable === true &&
+                userName.trim() && (
+                  <Text style={styles.availableText}>
+                    ✓ Username is available
+                  </Text>
+                )}
+              {!checkingUserName && userNameAvailable === false && (
+                <Text style={styles.unavailableText}>✗ Username is taken</Text>
+              )}
+            </View>
+          </>
+        ) : (
+          <Text style={styles.valueText}>
+            {user?.userName ? `@${user.userName}` : "Not set"}
+          </Text>
+        )}
+      </View>
+
+      {isEditing && (
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.buttonDisabled]}
+            onPress={handleSave}
+            disabled={saving || userNameAvailable === false}
+          >
+            {saving ? (
+              <ActivityIndicator color="#1A1A1A" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -233,16 +256,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 30,
+  },
   title: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#FFFFFF",
-    marginBottom: 30,
+  },
+  editButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#333",
+    borderRadius: 6,
+  },
+  editButtonText: {
+    color: "#E5A823",
+    fontSize: 14,
+    fontWeight: "600",
   },
   infoSection: {
-    marginBottom: 20,
-  },
-  inputSection: {
     marginBottom: 20,
   },
   label: {
@@ -250,7 +286,7 @@ const styles = StyleSheet.create({
     color: "#888",
     marginBottom: 8,
   },
-  emailText: {
+  valueText: {
     fontSize: 16,
     color: "#FFFFFF",
   },
@@ -279,31 +315,36 @@ const styles = StyleSheet.create({
     color: "#F44336",
     fontSize: 12,
   },
+  buttonRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#666",
+  },
+  cancelButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   saveButton: {
+    flex: 1,
     backgroundColor: "#E5A823",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 20,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
     color: "#1A1A1A",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  logoutButton: {
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 15,
-    borderWidth: 1,
-    borderColor: "#F44336",
-  },
-  logoutButtonText: {
-    color: "#F44336",
     fontSize: 16,
     fontWeight: "600",
   },

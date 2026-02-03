@@ -5,6 +5,7 @@ using System.Text.Json;
 using Alexandria.API.Data;
 using Alexandria.API.DTOs;
 using Alexandria.API.Models;
+using Alexandria.API.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -46,12 +47,18 @@ public class AuthController(
         
         if (user is null)
         {
+            // Generate a unique random username
+            var randomUsername = await UsernameGenerator.GenerateUniqueAsync(
+                async (name) => await context.Users.AnyAsync(u => u.UserName == name)
+            );
+
             // Create new user
             user = new User
             {
                 GoogleId = googleUser.Id,
                 Email = googleUser.Email,
                 Name = googleUser.Name,
+                UserName = randomUsername,
                 ProfilePictureUrl = googleUser.Picture,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -59,7 +66,7 @@ public class AuthController(
             context.Users.Add(user);
             await context.SaveChangesAsync();
             
-            logger.LogInformation("Created new user {UserId} for Google account {Email}", user.Id, user.Email);
+            logger.LogInformation("Created new user {UserId} for Google account {Email} with username {UserName}", user.Id, user.Email, user.UserName);
         }
         else
         {
@@ -123,6 +130,7 @@ public class AuthController(
             Id = user.Id,
             Email = user.Email,
             Name = user.Name,
+            UserName = user.UserName,
             ProfilePictureUrl = user.ProfilePictureUrl
         });
     }
