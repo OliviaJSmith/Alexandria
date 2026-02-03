@@ -31,6 +31,9 @@ builder.Services.AddHttpClient("GoogleBooks", client =>
     client.BaseAddress = new Uri(builder.Configuration["GoogleBooks:BaseUrl"] ?? "https://www.googleapis.com/books/v1");
 });
 
+// Add default HttpClient for general use (e.g., Google OAuth verification)
+builder.Services.AddHttpClient();
+
 // Configure database - use in-memory for development if PostgreSQL is not available
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
@@ -51,7 +54,7 @@ var jwtKey = builder.Configuration["Jwt:Key"] ?? "YourSecretKeyForAuthentication
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Alexandria";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "AlexandriaUsers";
 
-var authBuilder = builder.Services.AddAuthentication(options =>
+builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -68,19 +71,12 @@ var authBuilder = builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
-});
-
-// Only add Google authentication if credentials are configured
-var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
-var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+})
+.AddGoogle(options =>
 {
-    authBuilder.AddGoogle(options =>
-    {
-        options.ClientId = googleClientId;
-        options.ClientSecret = googleClientSecret;
-    });
-}
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+});
 
 builder.Services.AddAuthorization();
 
@@ -111,8 +107,23 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Add Cross-Origin headers for browser compatibility
+// app.Use(async (context, next) =>
+// {
+//     context.Response.Headers.Append("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+//     context.Response.Headers.Append("Cross-Origin-Embedder-Policy", "credentialless");
+//     await next();
+// });
+
+// CORS must be before other middleware to handle preflight requests
 app.UseCors("AllowAll");
+
+// Only redirect to HTTPS in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 

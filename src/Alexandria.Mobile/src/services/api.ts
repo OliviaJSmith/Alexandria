@@ -9,8 +9,6 @@ import {
   BookPreview,
   ConfirmBooksRequest,
   ConfirmBooksResult,
-  User,
-  UpdateUserRequest,
 } from "../types";
 import { config } from "../config";
 
@@ -106,6 +104,11 @@ export const getLibraryBooks = async (
   return response.data;
 };
 
+export const getLentOutBooks = async (): Promise<LibraryBook[]> => {
+  const response = await api.get('/libraries/lent-out');
+  return response.data;
+};
+
 export const addBookToLibrary = async (
   libraryId: number,
   bookId: number,
@@ -123,6 +126,30 @@ export const removeBookFromLibrary = async (
   libraryBookId: number,
 ): Promise<void> => {
   await api.delete(`/libraries/${libraryId}/books/${libraryBookId}`);
+};
+
+export const updateLibraryBook = async (
+  libraryId: number,
+  libraryBookId: number,
+  updates: {
+    status?: number;
+    genre?: string;
+    loanNote?: string;
+  },
+): Promise<LibraryBook> => {
+  const response = await api.patch(`/libraries/${libraryId}/books/${libraryBookId}`, updates);
+  return response.data;
+};
+
+export const moveBookToLibrary = async (
+  sourceLibraryId: number,
+  libraryBookId: number,
+  targetLibraryId: number,
+): Promise<LibraryBook> => {
+  const response = await api.post(`/libraries/${sourceLibraryId}/books/${libraryBookId}/move`, {
+    targetLibraryId,
+  });
+  return response.data;
 };
 
 // Loans API
@@ -227,6 +254,37 @@ export const confirmBooksToLibrary = async (
 };
 
 // Authentication
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    profilePictureUrl?: string;
+  };
+}
+
+export const loginWithGoogle = async (googleAccessToken: string): Promise<AuthResponse> => {
+  console.log('loginWithGoogle: Making request to /auth/google');
+  console.log('loginWithGoogle: Token length:', googleAccessToken?.length);
+  try {
+    const response = await api.post("/auth/google", { accessToken: googleAccessToken });
+    console.log('loginWithGoogle: Response received', response.status);
+    // Store the JWT token
+    await AsyncStorage.setItem("authToken", response.data.token);
+    console.log('loginWithGoogle: Token stored');
+    return response.data;
+  } catch (error: any) {
+    console.error('loginWithGoogle: Request failed', error?.response?.status, error?.response?.data);
+    throw error;
+  }
+};
+
+export const getCurrentUser = async (): Promise<AuthResponse['user']> => {
+  const response = await api.get("/auth/me");
+  return response.data;
+};
+
 export const setAuthToken = async (token: string): Promise<void> => {
   await AsyncStorage.setItem("authToken", token);
 };
@@ -239,26 +297,11 @@ export const removeAuthToken = async (): Promise<void> => {
   await AsyncStorage.removeItem("authToken");
 };
 
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
-export const loginWithGoogle = async (
-  googleAccessToken: string,
-): Promise<AuthResponse> => {
-  const response = await api.post("/auth/google", {
-    accessToken: googleAccessToken,
-  });
-  return response.data;
+export const logout = async (): Promise<void> => {
+  await AsyncStorage.removeItem("authToken");
 };
 
 // Users API
-export const getCurrentUser = async (): Promise<User> => {
-  const response = await api.get("/users/me");
-  return response.data;
-};
-
 export const updateCurrentUser = async (
   data: UpdateUserRequest,
 ): Promise<User> => {
