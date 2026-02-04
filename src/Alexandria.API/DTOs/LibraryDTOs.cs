@@ -31,6 +31,12 @@ public class AddBookToLibraryRequest
 {
     public int BookId { get; set; }
     public BookStatus Status { get; set; } = BookStatus.Available;
+
+    /// <summary>
+    /// If true, allows adding a duplicate book to the library.
+    /// If false and book already exists, returns a conflict response.
+    /// </summary>
+    public bool ForceAdd { get; set; } = false;
 }
 
 public class UpdateLibraryBookRequest

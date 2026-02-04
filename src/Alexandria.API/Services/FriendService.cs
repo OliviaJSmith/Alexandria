@@ -5,15 +5,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.API.Services;
 
-public class FriendService(AlexandriaDbContext context, ILogger<FriendService> logger) : IFriendService
+public class FriendService(AlexandriaDbContext context, ILogger<FriendService> logger)
+    : IFriendService
 {
     public async Task<IEnumerable<FriendDto>> GetFriendsAsync(int userId)
     {
-        var friendships = await context.Friendships
-            .Include(f => f.Requester)
+        var friendships = await context
+            .Friendships.Include(f => f.Requester)
             .Include(f => f.Addressee)
-            .Where(f => (f.RequesterId == userId || f.AddresseeId == userId)
-                && f.Status == FriendshipStatus.Accepted)
+            .Where(f =>
+                (f.RequesterId == userId || f.AddresseeId == userId)
+                && f.Status == FriendshipStatus.Accepted
+            )
             .ToListAsync();
 
         return friendships.Select(f =>
@@ -27,11 +30,50 @@ public class FriendService(AlexandriaDbContext context, ILogger<FriendService> l
                     Id = friend.Id,
                     Email = friend.Email,
                     Name = friend.Name,
-                    ProfilePictureUrl = friend.ProfilePictureUrl
+                    ProfilePictureUrl = friend.ProfilePictureUrl,
                 },
-                CreatedAt = f.CreatedAt
+                CreatedAt = f.CreatedAt,
             };
         });
+    }
+
+    public async Task<IEnumerable<FriendRequestDto>> GetPendingRequestsAsync(int userId)
+    {
+        var pendingRequests = await context
+            .Friendships.Include(f => f.Requester)
+            .Where(f => f.AddresseeId == userId && f.Status == FriendshipStatus.Pending)
+            .ToListAsync();
+
+        return pendingRequests.Select(f => new FriendRequestDto
+        {
+            Id = f.Id,
+            FromUser = new UserDto
+            {
+                Id = f.Requester.Id,
+                Email = f.Requester.Email,
+                Name = f.Requester.Name,
+                ProfilePictureUrl = f.Requester.ProfilePictureUrl,
+            },
+            CreatedAt = f.CreatedAt,
+        });
+    }
+
+    public async Task<UserDto?> SearchUserByEmailAsync(int currentUserId, string email)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u =>
+            u.Email.ToLower() == email.ToLower() && u.Id != currentUserId
+        );
+
+        if (user is null)
+            return null;
+
+        return new UserDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            Name = user.Name,
+            ProfilePictureUrl = user.ProfilePictureUrl,
+        };
     }
 
     public async Task<ServiceResult> SendFriendRequestAsync(int userId, int friendId)
@@ -43,10 +85,10 @@ public class FriendService(AlexandriaDbContext context, ILogger<FriendService> l
         if (friend is null)
             return ServiceResult.Failure("User not found");
 
-        var existingFriendship = await context.Friendships
-            .FirstOrDefaultAsync(f =>
-                (f.RequesterId == userId && f.AddresseeId == friendId) ||
-                (f.RequesterId == friendId && f.AddresseeId == userId));
+        var existingFriendship = await context.Friendships.FirstOrDefaultAsync(f =>
+            (f.RequesterId == userId && f.AddresseeId == friendId)
+            || (f.RequesterId == friendId && f.AddresseeId == userId)
+        );
 
         if (existingFriendship is not null)
             return ServiceResult.Failure("Friendship request already exists");
@@ -57,7 +99,7 @@ public class FriendService(AlexandriaDbContext context, ILogger<FriendService> l
             AddresseeId = friendId,
             Status = FriendshipStatus.Pending,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
         };
 
         context.Friendships.Add(friendship);

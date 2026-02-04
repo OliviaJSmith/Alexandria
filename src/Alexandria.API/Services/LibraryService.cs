@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.API.Services;
 
-public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService> logger) : ILibraryService
+public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService> logger)
+    : ILibraryService
 {
     public async Task<IEnumerable<LibraryDto>> GetLibrariesAsync(int userId, bool? isPublic)
     {
@@ -47,7 +48,7 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
             IsPublic = request.IsPublic,
             UserId = userId,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
         };
 
         context.Libraries.Add(library);
@@ -61,8 +62,8 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         if (!await UserHasAccessToLibraryAsync(libraryId, userId))
             return [];
 
-        var libraryBooks = await context.LibraryBooks
-            .Include(lb => lb.Book)
+        var libraryBooks = await context
+            .LibraryBooks.Include(lb => lb.Book)
             .Where(lb => lb.LibraryId == libraryId)
             .ToListAsync();
 
@@ -72,8 +73,8 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
     public async Task<IEnumerable<LibraryBookDto>> GetLentOutBooksAsync(int userId)
     {
         // Get all books with CheckedOut status from user's libraries
-        var lentBooks = await context.LibraryBooks
-            .Include(lb => lb.Book)
+        var lentBooks = await context
+            .LibraryBooks.Include(lb => lb.Book)
             .Include(lb => lb.Library)
             .Where(lb => lb.Library.UserId == userId && lb.Status == BookStatus.CheckedOut)
             .ToListAsync();
@@ -81,30 +82,47 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         return lentBooks.Select(MapToLibraryBookDto);
     }
 
-    public async Task<LibraryBookDto?> AddBookToLibraryAsync(int libraryId, int userId, AddBookToLibraryRequest request)
+    public async Task<ServiceResult<LibraryBookDto>> AddBookToLibraryAsync(
+        int libraryId,
+        int userId,
+        AddBookToLibraryRequest request
+    )
     {
         var library = await context.Libraries.FindAsync(libraryId);
 
         if (library is null || library.UserId != userId)
-            return null;
+            return ServiceResult<LibraryBookDto>.Failure("Not found");
 
         var book = await context.Books.FindAsync(request.BookId);
         if (book is null)
-            return null;
+            return ServiceResult<LibraryBookDto>.Failure("Not found");
+
+        // Check for duplicate book in library (unless ForceAdd is true)
+        if (!request.ForceAdd)
+        {
+            var existingBook = await context.LibraryBooks.FirstOrDefaultAsync(lb =>
+                lb.LibraryId == libraryId && lb.BookId == request.BookId
+            );
+
+            if (existingBook is not null)
+            {
+                return ServiceResult<LibraryBookDto>.Failure("Duplicate");
+            }
+        }
 
         var libraryBook = new LibraryBook
         {
             LibraryId = libraryId,
             BookId = request.BookId,
             Status = request.Status,
-            AddedAt = DateTime.UtcNow
+            AddedAt = DateTime.UtcNow,
         };
 
         context.LibraryBooks.Add(libraryBook);
         await context.SaveChangesAsync();
 
         libraryBook.Book = book;
-        return MapToLibraryBookDto(libraryBook);
+        return ServiceResult<LibraryBookDto>.Success(MapToLibraryBookDto(libraryBook));
     }
 
     public async Task<bool> RemoveBookFromLibraryAsync(int libraryId, int libraryBookId, int userId)
@@ -114,8 +132,9 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         if (library is null || library.UserId != userId)
             return false;
 
-        var libraryBook = await context.LibraryBooks
-            .FirstOrDefaultAsync(lb => lb.Id == libraryBookId && lb.LibraryId == libraryId);
+        var libraryBook = await context.LibraryBooks.FirstOrDefaultAsync(lb =>
+            lb.Id == libraryBookId && lb.LibraryId == libraryId
+        );
 
         if (libraryBook is null)
             return false;
@@ -125,15 +144,20 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         return true;
     }
 
-    public async Task<LibraryBookDto?> UpdateLibraryBookAsync(int libraryId, int libraryBookId, int userId, UpdateLibraryBookRequest request)
+    public async Task<LibraryBookDto?> UpdateLibraryBookAsync(
+        int libraryId,
+        int libraryBookId,
+        int userId,
+        UpdateLibraryBookRequest request
+    )
     {
         var library = await context.Libraries.FindAsync(libraryId);
 
         if (library is null || library.UserId != userId)
             return null;
 
-        var libraryBook = await context.LibraryBooks
-            .Include(lb => lb.Book)
+        var libraryBook = await context
+            .LibraryBooks.Include(lb => lb.Book)
             .FirstOrDefaultAsync(lb => lb.Id == libraryBookId && lb.LibraryId == libraryId);
 
         if (libraryBook is null)
@@ -148,20 +172,29 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         // Update loan note if provided
         if (request.LoanNote is not null)
         {
-            libraryBook.LoanNote = string.IsNullOrWhiteSpace(request.LoanNote) ? null : request.LoanNote;
+            libraryBook.LoanNote = string.IsNullOrWhiteSpace(request.LoanNote)
+                ? null
+                : request.LoanNote;
         }
 
         // Update genre on the book itself if provided
         if (request.Genre is not null)
         {
-            libraryBook.Book.Genre = string.IsNullOrWhiteSpace(request.Genre) ? null : request.Genre;
+            libraryBook.Book.Genre = string.IsNullOrWhiteSpace(request.Genre)
+                ? null
+                : request.Genre;
         }
 
         await context.SaveChangesAsync();
         return MapToLibraryBookDto(libraryBook);
     }
 
-    public async Task<LibraryBookDto?> MoveBookToLibraryAsync(int sourceLibraryId, int libraryBookId, int targetLibraryId, int userId)
+    public async Task<LibraryBookDto?> MoveBookToLibraryAsync(
+        int sourceLibraryId,
+        int libraryBookId,
+        int targetLibraryId,
+        int userId
+    )
     {
         // Verify user owns both libraries
         var sourceLibrary = await context.Libraries.FindAsync(sourceLibraryId);
@@ -173,8 +206,8 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         if (targetLibrary is null || targetLibrary.UserId != userId)
             return null;
 
-        var libraryBook = await context.LibraryBooks
-            .Include(lb => lb.Book)
+        var libraryBook = await context
+            .LibraryBooks.Include(lb => lb.Book)
             .FirstOrDefaultAsync(lb => lb.Id == libraryBookId && lb.LibraryId == sourceLibraryId);
 
         if (libraryBook is null)
@@ -199,34 +232,36 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         return library is not null && library.UserId == userId;
     }
 
-    private static LibraryDto MapToDto(Library library) => new()
-    {
-        Id = library.Id,
-        Name = library.Name,
-        IsPublic = library.IsPublic,
-        UserId = library.UserId,
-        CreatedAt = library.CreatedAt
-    };
-
-    private static LibraryBookDto MapToLibraryBookDto(LibraryBook lb) => new()
-    {
-        Id = lb.Id,
-        LibraryId = lb.LibraryId,
-        Status = lb.Status,
-        LoanNote = lb.LoanNote,
-        AddedAt = lb.AddedAt,
-        Book = new BookDto
+    private static LibraryDto MapToDto(Library library) =>
+        new()
         {
-            Id = lb.Book.Id,
-            Title = lb.Book.Title,
-            Author = lb.Book.Author,
-            Isbn = lb.Book.Isbn,
-            Publisher = lb.Book.Publisher,
-            PublishedYear = lb.Book.PublishedYear,
-            Description = lb.Book.Description,
-            CoverImageUrl = lb.Book.CoverImageUrl,
-            Genre = lb.Book.Genre,
-            PageCount = lb.Book.PageCount
-        }
-    };
+            Id = library.Id,
+            Name = library.Name,
+            IsPublic = library.IsPublic,
+            UserId = library.UserId,
+            CreatedAt = library.CreatedAt,
+        };
+
+    private static LibraryBookDto MapToLibraryBookDto(LibraryBook lb) =>
+        new()
+        {
+            Id = lb.Id,
+            LibraryId = lb.LibraryId,
+            Status = lb.Status,
+            LoanNote = lb.LoanNote,
+            AddedAt = lb.AddedAt,
+            Book = new BookDto
+            {
+                Id = lb.Book.Id,
+                Title = lb.Book.Title,
+                Author = lb.Book.Author,
+                Isbn = lb.Book.Isbn,
+                Publisher = lb.Book.Publisher,
+                PublishedYear = lb.Book.PublishedYear,
+                Description = lb.Book.Description,
+                CoverImageUrl = lb.Book.CoverImageUrl,
+                Genre = lb.Book.Genre,
+                PageCount = lb.Book.PageCount,
+            },
+        };
 }

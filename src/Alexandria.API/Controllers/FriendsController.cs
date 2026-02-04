@@ -18,6 +18,29 @@ public class FriendsController(IFriendService friendService) : BaseController
         return Ok(friends);
     }
 
+    [HttpGet("requests")]
+    public async Task<ActionResult<IEnumerable<FriendRequestDto>>> GetPendingRequests()
+    {
+        var userId = GetCurrentUserId();
+        var requests = await friendService.GetPendingRequestsAsync(userId);
+        return Ok(requests);
+    }
+
+    [HttpGet("search")]
+    public async Task<ActionResult<UserDto>> SearchUserByEmail([FromQuery] string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest("Email is required");
+
+        var userId = GetCurrentUserId();
+        var user = await friendService.SearchUserByEmailAsync(userId, email);
+
+        if (user is null)
+            return NotFound("No user found with that email");
+
+        return Ok(user);
+    }
+
     [HttpPost("{friendId}")]
     public async Task<ActionResult> SendFriendRequest(int friendId)
     {
@@ -29,7 +52,7 @@ public class FriendsController(IFriendService friendService) : BaseController
             return result.Error switch
             {
                 "User not found" => NotFound(result.Error),
-                _ => BadRequest(result.Error)
+                _ => BadRequest(result.Error),
             };
         }
 
@@ -48,7 +71,7 @@ public class FriendsController(IFriendService friendService) : BaseController
             {
                 "Not found" => NotFound(),
                 "Forbidden" => Forbid(),
-                _ => BadRequest(result.Error)
+                _ => BadRequest(result.Error),
             };
         }
 
@@ -67,7 +90,7 @@ public class FriendsController(IFriendService friendService) : BaseController
             {
                 "Not found" => NotFound(),
                 "Forbidden" => Forbid(),
-                _ => BadRequest(result.Error)
+                _ => BadRequest(result.Error),
             };
         }
 
