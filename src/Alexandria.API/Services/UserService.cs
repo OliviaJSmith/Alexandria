@@ -35,11 +35,15 @@ public class UserService(AlexandriaDbContext context, ILogger<UserService> logge
             return ServiceResult<UserDto>.Failure("Email is already in use");
         }
 
-        // Validate UserName if provided
-        if (!string.IsNullOrWhiteSpace(createUserDto.UserName) &&
-            !await IsUserNameAvailableAsync(createUserDto.UserName))
+        // Normalize and validate UserName if provided
+        string? normalizedUserName = null;
+        if (!string.IsNullOrWhiteSpace(createUserDto.UserName))
         {
-            return ServiceResult<UserDto>.Failure("Username is already taken");
+            normalizedUserName = createUserDto.UserName.Trim();
+            if (!await IsUserNameAvailableAsync(normalizedUserName))
+            {
+                return ServiceResult<UserDto>.Failure("Username is already taken");
+            }
         }
 
         var user = new User
@@ -47,7 +51,7 @@ public class UserService(AlexandriaDbContext context, ILogger<UserService> logge
             GoogleId = createUserDto.GoogleId,
             Email = createUserDto.Email,
             Name = createUserDto.Name,
-            UserName = createUserDto.UserName?.Trim(),
+            UserName = normalizedUserName,
             ProfilePictureUrl = createUserDto.ProfilePictureUrl,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

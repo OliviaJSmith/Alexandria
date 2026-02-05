@@ -179,6 +179,46 @@ public class UserServiceTests : ServiceTestBase
         Assert.Contains("Username is already taken", result.Error);
     }
 
+    [Fact]
+    public async Task CreateUserAsync_WithWhitespaceOnlyUserName_StoresAsNull()
+    {
+        // Arrange
+        var createDto = new CreateUserDto
+        {
+            GoogleId = "google-new",
+            Email = "newuser@test.com",
+            Name = "New User",
+            UserName = "   " // whitespace only
+        };
+
+        // Act
+        var result = await _sut.CreateUserAsync(createDto);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Data!.UserName); // Should be null, not empty string
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_WithEmptyUserName_StoresAsNull()
+    {
+        // Arrange
+        var createDto = new CreateUserDto
+        {
+            GoogleId = "google-new",
+            Email = "newuser@test.com",
+            Name = "New User",
+            UserName = "" // empty string
+        };
+
+        // Act
+        var result = await _sut.CreateUserAsync(createDto);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Data!.UserName); // Should be null, not empty string
+    }
+
     #endregion
 
     #region UpdateUserAsync Username Validation Tests

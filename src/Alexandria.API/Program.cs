@@ -34,20 +34,11 @@ builder.Services.AddHttpClient("GoogleBooks", client =>
 // Add default HttpClient for general use (e.g., Google OAuth verification)
 builder.Services.AddHttpClient();
 
-// Configure database - use in-memory for development if PostgreSQL is not available
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
-
-if (useInMemory || string.IsNullOrEmpty(connectionString) || !connectionString.Contains("Password=") || connectionString.Contains("Password=;") || connectionString.EndsWith("Password="))
-{
-    builder.Services.AddDbContext<AlexandriaDbContext>(options =>
-        options.UseInMemoryDatabase("AlexandriaDb"));
-}
-else
-{
-    builder.Services.AddDbContext<AlexandriaDbContext>(options =>
-        options.UseNpgsql(connectionString));
-}
+// Configure PostgreSQL database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=alexandria;Username=postgres;Password=postgres";
+builder.Services.AddDbContext<AlexandriaDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 // Configure Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "YourSecretKeyForAuthenticationOfAlexandria2026";
