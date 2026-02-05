@@ -49,7 +49,7 @@ public class AuthController(
         {
             // Generate a unique random username
             var randomUsername = await UsernameGenerator.GenerateUniqueAsync(
-                async (name) => await context.Users.AnyAsync(u => u.UserName == name)
+                async (name) => await context.Users.AnyAsync(u => u.UserName.ToLower() == name.ToLower())
             );
 
             // Create new user

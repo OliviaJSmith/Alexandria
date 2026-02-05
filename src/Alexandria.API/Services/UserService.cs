@@ -36,12 +36,10 @@ public class UserService(AlexandriaDbContext context, ILogger<UserService> logge
         }
 
         // Validate UserName if provided
-        if (!string.IsNullOrWhiteSpace(createUserDto.UserName))
+        if (!string.IsNullOrWhiteSpace(createUserDto.UserName) &&
+            !await IsUserNameAvailableAsync(createUserDto.UserName))
         {
-            if (!await IsUserNameAvailableAsync(createUserDto.UserName))
-            {
-                return ServiceResult<UserDto>.Failure("Username is already taken");
-            }
+            return ServiceResult<UserDto>.Failure("Username is already taken");
         }
 
         var user = new User
