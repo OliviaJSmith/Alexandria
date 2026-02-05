@@ -36,7 +36,7 @@ public static class UsernameGenerator
         "Tower", "Vault", "Den", "Chamber", "Hall", "Library", "Athenaeum"
     ];
 
-    private static readonly Random _random = new();
+    private static readonly Random _random = Random.Shared;
 
     /// <summary>
     /// Generates a random book-themed username.
