@@ -117,7 +117,7 @@ export default function ProfileScreen({ navigation }: any) {
     try {
       const updatedUser = await updateCurrentUser({
         name: name.trim() || undefined,
-        userName: userName.trim() || undefined,
+        userName: userName.trim(),
       });
       setUser(updatedUser);
       setIsEditing(false);
