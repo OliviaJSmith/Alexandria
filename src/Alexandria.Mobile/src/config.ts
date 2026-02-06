@@ -12,7 +12,7 @@ export const config = {
     // Production: Use your deployed API URL
     baseUrl: extra?.apiBaseUrl || 'http://localhost:5000/api',
   },
-  
+
   // Google OAuth Configuration
   // Get these from Google Cloud Console: https://console.cloud.google.com/apis/credentials
   google: {
@@ -23,7 +23,7 @@ export const config = {
     // iOS OAuth Client ID
     iosClientId: extra?.googleIosClientId || '',
   },
-  
+
   // Feature Flags
   features: {
     imageSearch: true,

@@ -57,7 +57,7 @@ export default function LoansScreen() {
     <View style={styles.loanCard}>
       <Text style={styles.bookTitle}>{item.book.title}</Text>
       {item.book.author && <Text style={styles.bookAuthor}>{item.book.author}</Text>}
-      
+
       <View style={styles.loanInfo}>
         <Text style={styles.infoText}>Lender: {item.lenderName}</Text>
         <Text style={styles.infoText}>Borrower: {item.borrowerName}</Text>
@@ -70,7 +70,7 @@ export default function LoansScreen() {
           </Text>
         )}
       </View>
-      
+
       <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
         <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
       </View>
@@ -89,7 +89,7 @@ export default function LoansScreen() {
           {item.book.genre && <Text style={styles.genreText}>{item.book.genre}</Text>}
         </View>
       </View>
-      
+
       <View style={styles.loanInfo}>
         {item.loanNote ? (
           <Text style={styles.loanNoteText}>Loaned to: {item.loanNote}</Text>
@@ -97,7 +97,7 @@ export default function LoansScreen() {
           <Text style={styles.infoText}>Loaned out (no borrower specified)</Text>
         )}
       </View>
-      
+
       <View style={[styles.statusBadge, { backgroundColor: '#FF9800' }]}>
         <Text style={styles.statusText}>Loaned Out</Text>
       </View>
@@ -111,9 +111,7 @@ export default function LoansScreen() {
           style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
           onPress={() => setFilter('all')}
         >
-          <Text style={filter === 'all' ? styles.filterTextActive : styles.filterText}>
-            All
-          </Text>
+          <Text style={filter === 'all' ? styles.filterTextActive : styles.filterText}>All</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterButton, filter === 'borrowed' && styles.filterButtonActive]}
@@ -127,21 +125,17 @@ export default function LoansScreen() {
           style={[styles.filterButton, filter === 'lent' && styles.filterButtonActive]}
           onPress={() => setFilter('lent')}
         >
-          <Text style={filter === 'lent' ? styles.filterTextActive : styles.filterText}>
-            Lent
-          </Text>
+          <Text style={filter === 'lent' ? styles.filterTextActive : styles.filterText}>Lent</Text>
         </TouchableOpacity>
       </View>
-      
+
       {filter === 'lent' ? (
         <FlatList
           data={lentBooks}
           renderItem={renderLentBook}
           keyExtractor={(item) => `lent-${item.id}`}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No books currently loaned out</Text>
-          }
+          ListEmptyComponent={<Text style={styles.emptyText}>No books currently loaned out</Text>}
         />
       ) : (
         <FlatList
@@ -149,9 +143,7 @@ export default function LoansScreen() {
           renderItem={renderLoan}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No loans found</Text>
-          }
+          ListEmptyComponent={<Text style={styles.emptyText}>No loans found</Text>}
         />
       )}
     </View>

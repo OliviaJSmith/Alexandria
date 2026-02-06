@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,24 +8,18 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-} from "react-native";
-import {
-  getCurrentUser,
-  updateCurrentUser,
-  checkUserNameAvailability,
-} from "../services/api";
-import { User } from "../types";
+} from 'react-native';
+import { getCurrentUser, updateCurrentUser, checkUserNameAvailability } from '../services/api';
+import { User } from '../types';
 
 export default function ProfileScreen({ navigation }: any) {
   const [user, setUser] = useState<User | null>(null);
-  const [userName, setUserName] = useState("");
-  const [name, setName] = useState("");
+  const [userName, setUserName] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [userNameAvailable, setUserNameAvailable] = useState<boolean | null>(
-    null,
-  );
+  const [userNameAvailable, setUserNameAvailable] = useState<boolean | null>(null);
   const [checkingUserName, setCheckingUserName] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -44,47 +38,41 @@ export default function ProfileScreen({ navigation }: any) {
     try {
       const userData = await getCurrentUser();
       setUser(userData);
-      setUserName(userData.userName || "");
-      setName(userData.name || "");
+      setUserName(userData.userName || '');
+      setName(userData.name || '');
     } catch (error) {
-      console.error("Failed to load user:", error);
-      Alert.alert("Error", "Failed to load profile");
+      console.error('Failed to load user:', error);
+      Alert.alert('Error', 'Failed to load profile');
     } finally {
       setLoading(false);
     }
   };
 
-  const checkUserName = useCallback(
-    async (value: string, currentUser: User | null) => {
-      if (!value.trim()) {
-        setUserNameAvailable(null);
-        setCheckingUserName(false);
-        return;
-      }
+  const checkUserName = useCallback(async (value: string, currentUser: User | null) => {
+    if (!value.trim()) {
+      setUserNameAvailable(null);
+      setCheckingUserName(false);
+      return;
+    }
 
-      // Don't check if it's the same as current username
-      if (
-        currentUser?.userName &&
-        value.toLowerCase() === currentUser.userName.toLowerCase()
-      ) {
-        setUserNameAvailable(true);
-        setCheckingUserName(false);
-        return;
-      }
+    // Don't check if it's the same as current username
+    if (currentUser?.userName && value.toLowerCase() === currentUser.userName.toLowerCase()) {
+      setUserNameAvailable(true);
+      setCheckingUserName(false);
+      return;
+    }
 
-      setCheckingUserName(true);
-      try {
-        const available = await checkUserNameAvailability(value);
-        setUserNameAvailable(available);
-      } catch (error) {
-        console.error("Failed to check username:", error);
-        setUserNameAvailable(null);
-      } finally {
-        setCheckingUserName(false);
-      }
-    },
-    [],
-  );
+    setCheckingUserName(true);
+    try {
+      const available = await checkUserNameAvailability(value);
+      setUserNameAvailable(available);
+    } catch (error) {
+      console.error('Failed to check username:', error);
+      setUserNameAvailable(null);
+    } finally {
+      setCheckingUserName(false);
+    }
+  }, []);
 
   const handleUserNameChange = (value: string) => {
     setUserName(value);
@@ -109,7 +97,7 @@ export default function ProfileScreen({ navigation }: any) {
 
   const handleSave = async () => {
     if (userNameAvailable === false) {
-      Alert.alert("Error", "Username is not available");
+      Alert.alert('Error', 'Username is not available');
       return;
     }
 
@@ -121,19 +109,19 @@ export default function ProfileScreen({ navigation }: any) {
       });
       setUser(updatedUser);
       setIsEditing(false);
-      Alert.alert("Success", "Profile updated successfully");
+      Alert.alert('Success', 'Profile updated successfully');
     } catch (error: any) {
-      console.error("Failed to update profile:", error);
-      const message = error.response?.data?.error || "Failed to update profile";
-      Alert.alert("Error", message);
+      console.error('Failed to update profile:', error);
+      const message = error.response?.data?.error || 'Failed to update profile';
+      Alert.alert('Error', message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setUserName(user?.userName || "");
-    setName(user?.name || "");
+    setUserName(user?.userName || '');
+    setName(user?.name || '');
     setUserNameAvailable(null);
     setIsEditing(false);
   };
@@ -151,10 +139,7 @@ export default function ProfileScreen({ navigation }: any) {
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
         {!isEditing && (
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => setIsEditing(true)}
-          >
+          <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
         )}
@@ -176,7 +161,7 @@ export default function ProfileScreen({ navigation }: any) {
             placeholderTextColor="#666"
           />
         ) : (
-          <Text style={styles.valueText}>{user?.name || "Not set"}</Text>
+          <Text style={styles.valueText}>{user?.name || 'Not set'}</Text>
         )}
       </View>
 
@@ -197,26 +182,18 @@ export default function ProfileScreen({ navigation }: any) {
             />
             <View style={styles.userNameStatus}>
               {checkingUserName && (
-                <Text style={styles.checkingText}>
-                  Checking availability...
-                </Text>
+                <Text style={styles.checkingText}>Checking availability...</Text>
               )}
-              {!checkingUserName &&
-                userNameAvailable === true &&
-                userName.trim() && (
-                  <Text style={styles.availableText}>
-                    ✓ Username is available
-                  </Text>
-                )}
+              {!checkingUserName && userNameAvailable === true && userName.trim() && (
+                <Text style={styles.availableText}>✓ Username is available</Text>
+              )}
               {!checkingUserName && userNameAvailable === false && (
                 <Text style={styles.unavailableText}>✗ Username is taken</Text>
               )}
             </View>
           </>
         ) : (
-          <Text style={styles.valueText}>
-            {user?.userName ? `@${user.userName}` : "Not set"}
-          </Text>
+          <Text style={styles.valueText}>{user?.userName ? `@${user.userName}` : 'Not set'}</Text>
         )}
       </View>
 
@@ -245,78 +222,78 @@ export default function ProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: '#121212',
   },
   content: {
     padding: 20,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#121212",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#121212',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 30,
   },
   title: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#FFFFFF",
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   editButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#333",
+    backgroundColor: '#333',
     borderRadius: 6,
   },
   editButtonText: {
-    color: "#E5A823",
+    color: '#E5A823',
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   infoSection: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    color: "#888",
+    color: '#888',
     marginBottom: 8,
   },
   valueText: {
     fontSize: 16,
-    color: "#FFFFFF",
+    color: '#FFFFFF',
   },
   input: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: '#1E1E1E',
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: '#333',
   },
   userNameStatus: {
     marginTop: 8,
     minHeight: 20,
   },
   checkingText: {
-    color: "#888",
+    color: '#888',
     fontSize: 12,
   },
   availableText: {
-    color: "#4CAF50",
+    color: '#4CAF50',
     fontSize: 12,
   },
   unavailableText: {
-    color: "#F44336",
+    color: '#F44336',
     fontSize: 12,
   },
   buttonRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 12,
     marginTop: 20,
   },
@@ -324,28 +301,28 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: "#666",
+    borderColor: '#666',
   },
   cancelButtonText: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: "#E5A823",
+    backgroundColor: '#E5A823',
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
-    color: "#1A1A1A",
+    color: '#1A1A1A',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
 });

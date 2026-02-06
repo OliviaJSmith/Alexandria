@@ -94,7 +94,10 @@ export default function ImageSearchScreen() {
     } catch (error: any) {
       console.error('Scan error:', error);
       if (error.response?.status === 404) {
-        Alert.alert('Not Found', 'Could not identify the book from this image. Try a clearer photo or manual entry.');
+        Alert.alert(
+          'Not Found',
+          'Could not identify the book from this image. Try a clearer photo or manual entry.'
+        );
       } else {
         Alert.alert('Error', 'Failed to scan book. Please try again.');
       }
@@ -116,11 +119,9 @@ export default function ImageSearchScreen() {
       });
 
       if (result.successCount > 0) {
-        Alert.alert(
-          'Success',
-          `"${editedPreview.title}" has been added to your library!`,
-          [{ text: 'OK', onPress: () => resetForm() }]
-        );
+        Alert.alert('Success', `"${editedPreview.title}" has been added to your library!`, [
+          { text: 'OK', onPress: () => resetForm() },
+        ]);
       } else {
         Alert.alert('Error', result.results[0]?.error || 'Failed to add book to library');
       }
@@ -168,19 +169,15 @@ export default function ImageSearchScreen() {
     }
   };
 
-  const selectedLibrary = libraries.find(l => l.id === selectedLibraryId);
+  const selectedLibrary = libraries.find((l) => l.id === selectedLibraryId);
 
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Scan a Book</Text>
-      <Text style={styles.subtitle}>
-        Take a photo of a book cover or barcode to identify it
-      </Text>
+      <Text style={styles.subtitle}>Take a photo of a book cover or barcode to identify it</Text>
 
       {/* Image Preview */}
-      {imageUri && (
-        <Image source={{ uri: imageUri }} style={styles.image} />
-      )}
+      {imageUri && <Image source={{ uri: imageUri }} style={styles.image} />}
 
       {/* Action Buttons */}
       <View style={styles.buttonContainer}>
@@ -210,7 +207,12 @@ export default function ImageSearchScreen() {
         <View style={styles.previewCard}>
           <View style={styles.previewHeader}>
             <Text style={styles.previewTitle}>Book Details</Text>
-            <View style={[styles.sourceBadge, { backgroundColor: getSourceColor(editedPreview.source) }]}>
+            <View
+              style={[
+                styles.sourceBadge,
+                { backgroundColor: getSourceColor(editedPreview.source) },
+              ]}
+            >
               <Text style={styles.sourceBadgeText}>{getSourceLabel(editedPreview.source)}</Text>
             </View>
           </View>
@@ -229,10 +231,7 @@ export default function ImageSearchScreen() {
             <Text style={styles.confidenceLabel}>Confidence:</Text>
             <View style={styles.confidenceBar}>
               <View
-                style={[
-                  styles.confidenceFill,
-                  { width: `${editedPreview.confidence * 100}%` },
-                ]}
+                style={[styles.confidenceFill, { width: `${editedPreview.confidence * 100}%` }]}
               />
             </View>
             <Text style={styles.confidenceValue}>
@@ -256,7 +255,9 @@ export default function ImageSearchScreen() {
             <TextInput
               style={styles.input}
               value={editedPreview.author || ''}
-              onChangeText={(text) => setEditedPreview({ ...editedPreview, author: text || undefined })}
+              onChangeText={(text) =>
+                setEditedPreview({ ...editedPreview, author: text || undefined })
+              }
               placeholder="Author name"
             />
           </View>
@@ -266,7 +267,9 @@ export default function ImageSearchScreen() {
             <TextInput
               style={styles.input}
               value={editedPreview.isbn || ''}
-              onChangeText={(text) => setEditedPreview({ ...editedPreview, isbn: text || undefined })}
+              onChangeText={(text) =>
+                setEditedPreview({ ...editedPreview, isbn: text || undefined })
+              }
               placeholder="ISBN-13"
               keyboardType="numeric"
             />
@@ -310,7 +313,9 @@ export default function ImageSearchScreen() {
             <TextInput
               style={styles.input}
               value={editedPreview.publisher || ''}
-              onChangeText={(text) => setEditedPreview({ ...editedPreview, publisher: text || undefined })}
+              onChangeText={(text) =>
+                setEditedPreview({ ...editedPreview, publisher: text || undefined })
+              }
               placeholder="Publisher"
             />
           </View>
@@ -320,7 +325,9 @@ export default function ImageSearchScreen() {
             <TextInput
               style={styles.input}
               value={editedPreview.genre || ''}
-              onChangeText={(text) => setEditedPreview({ ...editedPreview, genre: text || undefined })}
+              onChangeText={(text) =>
+                setEditedPreview({ ...editedPreview, genre: text || undefined })
+              }
               placeholder="Genre"
             />
           </View>
@@ -344,7 +351,11 @@ export default function ImageSearchScreen() {
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.primaryButton, !selectedLibraryId && styles.disabledButton]}
+              style={[
+                styles.button,
+                styles.primaryButton,
+                !selectedLibraryId && styles.disabledButton,
+              ]}
               onPress={handleAddToLibrary}
               disabled={saving || !selectedLibraryId}
             >
@@ -377,9 +388,7 @@ export default function ImageSearchScreen() {
                   }}
                 >
                   <Text style={styles.libraryItemText}>{library.name}</Text>
-                  {library.isPublic && (
-                    <Text style={styles.publicBadge}>Public</Text>
-                  )}
+                  {library.isPublic && <Text style={styles.publicBadge}>Public</Text>}
                 </TouchableOpacity>
               ))}
             </ScrollView>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,37 +12,37 @@ import {
   ActivityIndicator,
   Switch,
   ScrollView,
-} from "react-native";
+} from 'react-native';
 import {
   searchBooks,
   getLibraries,
   addBookToLibrary,
   createBook,
   createLibrary,
-} from "../services/api";
-import { Book, Library } from "../types";
+} from '../services/api';
+import { Book, Library } from '../types';
 
 const GENRE_OPTIONS = [
-  "Fiction",
-  "Non-Fiction",
-  "Mystery",
-  "Science Fiction",
-  "Fantasy",
-  "Romance",
-  "Thriller",
-  "Biography",
-  "History",
-  "Self-Help",
-  "Science",
-  "Children",
-  "Young Adult",
-  "Horror",
-  "Poetry",
-  "Other",
+  'Fiction',
+  'Non-Fiction',
+  'Mystery',
+  'Science Fiction',
+  'Fantasy',
+  'Romance',
+  'Thriller',
+  'Biography',
+  'History',
+  'Self-Help',
+  'Science',
+  'Children',
+  'Young Adult',
+  'Horror',
+  'Poetry',
+  'Other',
 ];
 
 export default function BookSearchScreen({ navigation }: any) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
   const [libraries, setLibraries] = useState<Library[]>([]);
@@ -53,7 +53,7 @@ export default function BookSearchScreen({ navigation }: any) {
 
   // Create library form state
   const [showCreateLibrary, setShowCreateLibrary] = useState(false);
-  const [newLibraryName, setNewLibraryName] = useState("");
+  const [newLibraryName, setNewLibraryName] = useState('');
   const [newLibraryIsPublic, setNewLibraryIsPublic] = useState(false);
   const [creatingLibrary, setCreatingLibrary] = useState(false);
 
@@ -70,7 +70,7 @@ export default function BookSearchScreen({ navigation }: any) {
       const libs = await getLibraries();
       setLibraries(libs);
     } catch (error) {
-      console.error("Failed to load libraries:", error);
+      console.error('Failed to load libraries:', error);
     }
   };
 
@@ -82,7 +82,7 @@ export default function BookSearchScreen({ navigation }: any) {
       const results = await searchBooks({ query: searchQuery });
       setBooks(results);
     } catch (error) {
-      console.error("Search error:", error);
+      console.error('Search error:', error);
     } finally {
       setLoading(false);
     }
@@ -110,7 +110,7 @@ export default function BookSearchScreen({ navigation }: any) {
 
   const handleCreateLibrary = async () => {
     if (!newLibraryName.trim()) {
-      Alert.alert("Error", "Please enter a library name");
+      Alert.alert('Error', 'Please enter a library name');
       return;
     }
 
@@ -122,12 +122,12 @@ export default function BookSearchScreen({ navigation }: any) {
       });
       setLibraries([...libraries, newLibrary]);
       setShowCreateLibrary(false);
-      setNewLibraryName("");
+      setNewLibraryName('');
       setNewLibraryIsPublic(false);
-      Alert.alert("Success", `Library "${newLibrary.name}" created!`);
+      Alert.alert('Success', `Library "${newLibrary.name}" created!`);
     } catch (error) {
-      console.error("Failed to create library:", error);
-      Alert.alert("Error", "Failed to create library. Please try again.");
+      console.error('Failed to create library:', error);
+      Alert.alert('Error', 'Failed to create library. Please try again.');
     } finally {
       setCreatingLibrary(false);
     }
@@ -135,7 +135,7 @@ export default function BookSearchScreen({ navigation }: any) {
 
   const confirmAddToLibrary = async (forceAdd: boolean = false) => {
     if (!selectedBook || !selectedLibrary) {
-      Alert.alert("Error", "Please select a library");
+      Alert.alert('Error', 'Please select a library');
       return;
     }
 
@@ -148,18 +148,14 @@ export default function BookSearchScreen({ navigation }: any) {
       // If the book doesn't exist in our database (id is 0), create it first
       if (bookId === 0) {
         const newBook = await createBook({
-          title: String(selectedBook.title || ""),
+          title: String(selectedBook.title || ''),
           author: selectedBook.author ? String(selectedBook.author) : undefined,
           isbn: selectedBook.isbn ? String(selectedBook.isbn) : undefined,
-          publisher: selectedBook.publisher
-            ? String(selectedBook.publisher)
-            : undefined,
+          publisher: selectedBook.publisher ? String(selectedBook.publisher) : undefined,
           publishedYear: selectedBook.publishedYear
             ? Number(selectedBook.publishedYear)
             : undefined,
-          description: selectedBook.description
-            ? String(selectedBook.description)
-            : undefined,
+          description: selectedBook.description ? String(selectedBook.description) : undefined,
           coverImageUrl: selectedBook.coverImageUrl
             ? String(selectedBook.coverImageUrl)
             : undefined,
@@ -168,46 +164,35 @@ export default function BookSearchScreen({ navigation }: any) {
             : selectedBook.genre
               ? String(selectedBook.genre)
               : undefined,
-          pageCount: selectedBook.pageCount
-            ? Number(selectedBook.pageCount)
-            : undefined,
+          pageCount: selectedBook.pageCount ? Number(selectedBook.pageCount) : undefined,
         });
         bookId = Number(newBook.id);
       }
 
       await addBookToLibrary(libraryId, bookId, 0, forceAdd);
-      Alert.alert(
-        "Success",
-        `"${selectedBook.title}" has been added to ${selectedLibrary.name}!`,
-      );
+      Alert.alert('Success', `"${selectedBook.title}" has been added to ${selectedLibrary.name}!`);
       setShowLibraryPicker(false);
       setSelectedBook(null);
       setSelectedLibrary(null);
       setSelectedGenre(null);
     } catch (error: any) {
-      console.error("Failed to add book to library:", error);
+      console.error('Failed to add book to library:', error);
 
       // Check if this is a duplicate book conflict (409)
-      if (
-        error?.response?.status === 409 &&
-        error?.response?.data?.isDuplicate
-      ) {
+      if (error?.response?.status === 409 && error?.response?.data?.isDuplicate) {
         Alert.alert(
-          "Book Already in Library",
-          "This book is already in your library. Do you want to add another copy?",
+          'Book Already in Library',
+          'This book is already in your library. Do you want to add another copy?',
           [
-            { text: "Cancel", style: "cancel" },
+            { text: 'Cancel', style: 'cancel' },
             {
-              text: "Add Another Copy",
+              text: 'Add Another Copy',
               onPress: () => confirmAddToLibrary(true),
             },
-          ],
+          ]
         );
       } else {
-        Alert.alert(
-          "Error",
-          "Failed to add book to library. Please try again.",
-        );
+        Alert.alert('Error', 'Failed to add book to library. Please try again.');
       }
     } finally {
       setAddingToLibrary(false);
@@ -218,10 +203,7 @@ export default function BookSearchScreen({ navigation }: any) {
     <View style={styles.bookCard}>
       <View style={styles.bookContent}>
         {item.coverImageUrl ? (
-          <Image
-            source={{ uri: item.coverImageUrl }}
-            style={styles.coverImage}
-          />
+          <Image source={{ uri: item.coverImageUrl }} style={styles.coverImage} />
         ) : (
           <View style={styles.placeholderCover}>
             <Text style={styles.placeholderText}>No Cover</Text>
@@ -236,9 +218,7 @@ export default function BookSearchScreen({ navigation }: any) {
               {item.author}
             </Text>
           )}
-          {item.publishedYear && (
-            <Text style={styles.bookYear}>{item.publishedYear}</Text>
-          )}
+          {item.publishedYear && <Text style={styles.bookYear}>{item.publishedYear}</Text>}
           {item.isbn && <Text style={styles.bookIsbn}>ISBN: {item.isbn}</Text>}
           {item.description && (
             <Text style={styles.bookDescription} numberOfLines={2}>
@@ -247,10 +227,7 @@ export default function BookSearchScreen({ navigation }: any) {
           )}
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => handleAddToLibrary(item)}
-      >
+      <TouchableOpacity style={styles.addButton} onPress={() => handleAddToLibrary(item)}>
         <Text style={styles.addButtonText}>+ Add to Library</Text>
       </TouchableOpacity>
     </View>
@@ -259,21 +236,13 @@ export default function BookSearchScreen({ navigation }: any) {
   const renderGenreOption = (genre: string) => (
     <TouchableOpacity
       key={genre}
-      style={[
-        styles.genreChip,
-        selectedGenre === genre && styles.genreChipSelected,
-      ]}
+      style={[styles.genreChip, selectedGenre === genre && styles.genreChipSelected]}
       onPress={() => {
         setSelectedGenre(genre);
         setShowGenrePicker(false);
       }}
     >
-      <Text
-        style={[
-          styles.genreChipText,
-          selectedGenre === genre && styles.genreChipTextSelected,
-        ]}
-      >
+      <Text style={[styles.genreChipText, selectedGenre === genre && styles.genreChipTextSelected]}>
         {genre}
       </Text>
     </TouchableOpacity>
@@ -298,7 +267,7 @@ export default function BookSearchScreen({ navigation }: any) {
 
         <TouchableOpacity
           style={styles.imageSearchButton}
-          onPress={() => navigation.navigate("ImageSearch")}
+          onPress={() => navigation.navigate('ImageSearch')}
         >
           <Text style={styles.buttonText}>Search by Image</Text>
         </TouchableOpacity>
@@ -311,9 +280,7 @@ export default function BookSearchScreen({ navigation }: any) {
         </View>
       ) : books.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            Search for books by title, author, or ISBN
-          </Text>
+          <Text style={styles.emptyText}>Search for books by title, author, or ISBN</Text>
         </View>
       ) : (
         <FlatList
@@ -360,17 +327,13 @@ export default function BookSearchScreen({ navigation }: any) {
                     onPress={() => setShowGenrePicker(!showGenrePicker)}
                   >
                     <Text style={styles.genreSelectorText}>
-                      {selectedGenre || "Select a genre..."}
+                      {selectedGenre || 'Select a genre...'}
                     </Text>
-                    <Text style={styles.genreSelectorArrow}>
-                      {showGenrePicker ? "▲" : "▼"}
-                    </Text>
+                    <Text style={styles.genreSelectorArrow}>{showGenrePicker ? '▲' : '▼'}</Text>
                   </TouchableOpacity>
 
                   {showGenrePicker && (
-                    <View style={styles.genreList}>
-                      {GENRE_OPTIONS.map(renderGenreOption)}
-                    </View>
+                    <View style={styles.genreList}>{GENRE_OPTIONS.map(renderGenreOption)}</View>
                   )}
                 </View>
 
@@ -388,8 +351,7 @@ export default function BookSearchScreen({ navigation }: any) {
                         key={library.id}
                         style={[
                           styles.libraryOption,
-                          selectedLibrary?.id === library.id &&
-                            styles.libraryOptionSelected,
+                          selectedLibrary?.id === library.id && styles.libraryOptionSelected,
                         ]}
                         onPress={() =>
                           setSelectedLibrary({
@@ -413,7 +375,7 @@ export default function BookSearchScreen({ navigation }: any) {
                             {library.name}
                           </Text>
                           <Text style={styles.libraryOptionSubtext}>
-                            {library.isPublic ? "🌐 Public" : "🔒 Private"}
+                            {library.isPublic ? '🌐 Public' : '🔒 Private'}
                           </Text>
                         </View>
                         {selectedLibrary?.id === library.id && (
@@ -428,9 +390,7 @@ export default function BookSearchScreen({ navigation }: any) {
                     style={styles.createLibraryButton}
                     onPress={() => setShowCreateLibrary(true)}
                   >
-                    <Text style={styles.createLibraryButtonText}>
-                      + Create New Library
-                    </Text>
+                    <Text style={styles.createLibraryButtonText}>+ Create New Library</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -451,10 +411,7 @@ export default function BookSearchScreen({ navigation }: any) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  !selectedLibrary && styles.saveButtonDisabled,
-                ]}
+                style={[styles.saveButton, !selectedLibrary && styles.saveButtonDisabled]}
                 onPress={confirmAddToLibrary}
                 disabled={!selectedLibrary || addingToLibrary}
               >
@@ -499,14 +456,14 @@ export default function BookSearchScreen({ navigation }: any) {
                   <View style={styles.switchRow}>
                     <Text style={styles.switchLabel}>
                       {newLibraryIsPublic
-                        ? "🌐 Public - Others can see your library"
-                        : "🔒 Private - Only you can see"}
+                        ? '🌐 Public - Others can see your library'
+                        : '🔒 Private - Only you can see'}
                     </Text>
                     <Switch
                       value={newLibraryIsPublic}
                       onValueChange={setNewLibraryIsPublic}
-                      trackColor={{ false: "#444", true: "#E5A823" }}
-                      thumbColor={newLibraryIsPublic ? "#FFF" : "#888"}
+                      trackColor={{ false: '#444', true: '#E5A823' }}
+                      thumbColor={newLibraryIsPublic ? '#FFF' : '#888'}
                     />
                   </View>
                 </View>
@@ -516,17 +473,14 @@ export default function BookSearchScreen({ navigation }: any) {
                     style={styles.cancelButton}
                     onPress={() => {
                       setShowCreateLibrary(false);
-                      setNewLibraryName("");
+                      setNewLibraryName('');
                       setNewLibraryIsPublic(false);
                     }}
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.confirmButton}
-                    onPress={handleCreateLibrary}
-                  >
+                  <TouchableOpacity style={styles.confirmButton} onPress={handleCreateLibrary}>
                     <Text style={styles.confirmButtonText}>Create Library</Text>
                   </TouchableOpacity>
                 </View>
@@ -542,25 +496,25 @@ export default function BookSearchScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: '#121212',
   },
   header: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: '#1E1E1E',
     paddingBottom: 15,
   },
   searchBox: {
-    flexDirection: "row",
+    flexDirection: 'row',
     padding: 15,
-    alignItems: "center",
+    alignItems: 'center',
     gap: 10,
   },
   searchInput: {
     flex: 1,
     padding: 10,
-    backgroundColor: "#2C2C2C",
+    backgroundColor: '#2C2C2C',
     borderRadius: 8,
     fontSize: 16,
-    color: "#FFFFFF",
+    color: '#FFFFFF',
   },
   list: {
     flex: 1,
@@ -569,36 +523,36 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   bookCard: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: '#1E1E1E',
     borderRadius: 8,
     marginBottom: 12,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   bookContent: {
-    flexDirection: "row",
+    flexDirection: 'row',
     padding: 12,
   },
   coverImage: {
     width: 80,
     height: 120,
     borderRadius: 4,
-    backgroundColor: "#2C2C2C",
+    backgroundColor: '#2C2C2C',
   },
   placeholderCover: {
     width: 80,
     height: 120,
     borderRadius: 4,
-    backgroundColor: "#2C2C2C",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#2C2C2C',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   placeholderText: {
-    color: "#666",
+    color: '#666',
     fontSize: 10,
   },
   bookInfo: {
@@ -607,264 +561,264 @@ const styles = StyleSheet.create({
   },
   bookTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#FFFFFF",
+    fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   bookAuthor: {
     fontSize: 14,
-    color: "#B0B0B0",
+    color: '#B0B0B0',
     marginBottom: 2,
   },
   bookYear: {
     fontSize: 12,
-    color: "#888",
+    color: '#888',
     marginBottom: 2,
   },
   bookIsbn: {
     fontSize: 11,
-    color: "#666",
+    color: '#666',
     marginBottom: 4,
   },
   bookDescription: {
     fontSize: 12,
-    color: "#999",
+    color: '#999',
     marginTop: 4,
   },
   addButton: {
-    backgroundColor: "#E5A823",
+    backgroundColor: '#E5A823',
     padding: 12,
-    alignItems: "center",
+    alignItems: 'center',
   },
   addButtonText: {
-    color: "#1A1A1A",
+    color: '#1A1A1A',
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   button: {
-    backgroundColor: "#E5A823",
+    backgroundColor: '#E5A823',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
   imageSearchButton: {
-    backgroundColor: "#C4891E",
+    backgroundColor: '#C4891E',
     padding: 12,
     marginHorizontal: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
   buttonText: {
-    color: "#1A1A1A",
+    color: '#1A1A1A',
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
-    color: "#B0B0B0",
+    color: '#B0B0B0',
     marginTop: 10,
     fontSize: 14,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   emptyText: {
-    color: "#666",
+    color: '#666',
     fontSize: 16,
-    textAlign: "center",
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "flex-end",
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: '#1E1E1E',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: "80%",
+    maxHeight: '80%',
   },
   modalScrollView: {
     maxHeight: 400,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    textAlign: "center",
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
     marginBottom: 5,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: "#B0B0B0",
-    textAlign: "center",
+    color: '#B0B0B0',
+    textAlign: 'center',
     marginBottom: 15,
   },
   modalLoading: {
     padding: 30,
-    alignItems: "center",
+    alignItems: 'center',
   },
   sectionContainer: {
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
+    fontWeight: '600',
+    color: '#FFFFFF',
     marginBottom: 10,
   },
   libraryList: {
     maxHeight: 250,
   },
   libraryOption: {
-    backgroundColor: "#2C2C2C",
+    backgroundColor: '#2C2C2C',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   libraryOptionSelected: {
-    backgroundColor: "#3D3D3D",
+    backgroundColor: '#3D3D3D',
     borderWidth: 2,
-    borderColor: "#E5A823",
+    borderColor: '#E5A823',
   },
   libraryOptionContent: {
     flex: 1,
   },
   libraryOptionText: {
     fontSize: 16,
-    color: "#FFFFFF",
-    fontWeight: "500",
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
   libraryOptionTextSelected: {
-    color: "#E5A823",
+    color: '#E5A823',
   },
   libraryOptionSubtext: {
     fontSize: 12,
-    color: "#888",
+    color: '#888',
     marginTop: 2,
   },
   checkmark: {
     fontSize: 20,
-    color: "#E5A823",
-    fontWeight: "bold",
+    color: '#E5A823',
+    fontWeight: 'bold',
     marginLeft: 10,
   },
   noLibrariesText: {
-    color: "#888",
+    color: '#888',
     fontSize: 14,
-    textAlign: "center",
+    textAlign: 'center',
     padding: 15,
   },
   createLibraryButton: {
-    backgroundColor: "#333",
+    backgroundColor: '#333',
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: "#E5A823",
-    borderStyle: "dashed",
+    borderColor: '#E5A823',
+    borderStyle: 'dashed',
     marginTop: 5,
   },
   createLibraryButtonText: {
-    color: "#E5A823",
+    color: '#E5A823',
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   modalButtonRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     marginTop: 15,
     gap: 10,
   },
   cancelButton: {
-    backgroundColor: "#333",
+    backgroundColor: '#333',
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     flex: 1,
   },
   cancelButtonText: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 16,
   },
   saveButton: {
-    backgroundColor: "#E5A823",
+    backgroundColor: '#E5A823',
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     flex: 1,
   },
   saveButtonDisabled: {
-    backgroundColor: "#666",
+    backgroundColor: '#666',
     opacity: 0.6,
   },
   saveButtonText: {
-    color: "#1A1A1A",
+    color: '#1A1A1A',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   // Genre picker styles
   genreSelector: {
-    backgroundColor: "#2C2C2C",
+    backgroundColor: '#2C2C2C',
     padding: 12,
     borderRadius: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   genreSelectorText: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 14,
   },
   genreSelectorArrow: {
-    color: "#888",
+    color: '#888',
     fontSize: 12,
   },
   genreList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: 10,
     gap: 8,
   },
   genreChip: {
-    backgroundColor: "#2C2C2C",
+    backgroundColor: '#2C2C2C',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#444",
+    borderColor: '#444',
   },
   genreChipSelected: {
-    backgroundColor: "#E5A823",
-    borderColor: "#E5A823",
+    backgroundColor: '#E5A823',
+    borderColor: '#E5A823',
   },
   genreChipText: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 13,
   },
   genreChipTextSelected: {
-    color: "#1A1A1A",
-    fontWeight: "600",
+    color: '#1A1A1A',
+    fontWeight: '600',
   },
   // Create library modal styles
   createLibraryModal: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: '#1E1E1E',
     margin: 20,
     borderRadius: 16,
     padding: 20,
-    alignSelf: "center",
-    width: "90%",
+    alignSelf: 'center',
+    width: '90%',
     maxWidth: 400,
   },
   formGroup: {
@@ -872,46 +826,46 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
+    fontWeight: '600',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   formInput: {
-    backgroundColor: "#2C2C2C",
+    backgroundColor: '#2C2C2C',
     padding: 12,
     borderRadius: 8,
     fontSize: 16,
-    color: "#FFFFFF",
+    color: '#FFFFFF',
   },
   switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#2C2C2C",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2C',
     padding: 12,
     borderRadius: 8,
   },
   switchLabel: {
     flex: 1,
-    color: "#B0B0B0",
+    color: '#B0B0B0',
     fontSize: 13,
     marginRight: 10,
   },
   createLibraryActions: {
-    flexDirection: "row",
+    flexDirection: 'row',
     marginTop: 10,
   },
   confirmButton: {
-    backgroundColor: "#E5A823",
+    backgroundColor: '#E5A823',
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     flex: 1,
     marginLeft: 5,
   },
   confirmButtonText: {
-    color: "#1A1A1A",
+    color: '#1A1A1A',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
 });

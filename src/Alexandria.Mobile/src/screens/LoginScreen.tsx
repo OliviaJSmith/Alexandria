@@ -24,12 +24,12 @@ export default function LoginScreen({ navigation }: any) {
   const handleSignInResponse = async () => {
     console.log('handleSignInResponse: response =', JSON.stringify(response, null, 2));
     setErrorMessage(null);
-    
+
     if (response?.type === 'success') {
       const { authentication } = response;
       console.log('handleSignInResponse: Got success, authentication exists:', !!authentication);
       console.log('handleSignInResponse: accessToken exists:', !!authentication?.accessToken);
-      
+
       if (authentication?.accessToken) {
         setIsLoading(true);
         try {
@@ -76,10 +76,10 @@ export default function LoginScreen({ navigation }: any) {
     <View style={styles.container}>
       <Text style={styles.title}>Alexandria</Text>
       <Text style={styles.subtitle}>Your Home Library</Text>
-      
+
       <View style={styles.form}>
-        <TouchableOpacity 
-          style={[styles.button, (!request || isLoading) && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.button, (!request || isLoading) && styles.buttonDisabled]}
           onPress={handleLogin}
           disabled={!request || isLoading}
         >
@@ -89,18 +89,12 @@ export default function LoginScreen({ navigation }: any) {
             <Text style={styles.buttonText}>Sign in with Google</Text>
           )}
         </TouchableOpacity>
-        
-        {isLoading && (
-          <Text style={styles.loadingText}>Signing you in...</Text>
-        )}
-        
-        {errorMessage && (
-          <Text style={styles.errorText}>{errorMessage}</Text>
-        )}
-        
-        <Text style={styles.note}>
-          Sign in to sync your library across devices
-        </Text>
+
+        {isLoading && <Text style={styles.loadingText}>Signing you in...</Text>}
+
+        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+
+        <Text style={styles.note}>Sign in to sync your library across devices</Text>
       </View>
     </View>
   );
