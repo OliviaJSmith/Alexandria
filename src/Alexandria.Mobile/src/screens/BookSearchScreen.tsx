@@ -142,31 +142,24 @@ export default function BookSearchScreen({ navigation }: any) {
     setAddingToLibrary(true);
     try {
       // Extract primitive values to avoid any circular references from React state
-      const libraryId = Number(selectedLibrary.id);
-      let bookId = Number(selectedBook.id);
+      const libraryId = selectedLibrary.id;
+      let bookId = selectedBook.id;
 
       // If the book doesn't exist in our database (id is 0), create it first
       if (bookId === 0) {
+        const genre = selectedGenre || selectedBook.genre || undefined;
         const newBook = await createBook({
-          title: String(selectedBook.title || ''),
-          author: selectedBook.author ? String(selectedBook.author) : undefined,
-          isbn: selectedBook.isbn ? String(selectedBook.isbn) : undefined,
-          publisher: selectedBook.publisher ? String(selectedBook.publisher) : undefined,
-          publishedYear: selectedBook.publishedYear
-            ? Number(selectedBook.publishedYear)
-            : undefined,
-          description: selectedBook.description ? String(selectedBook.description) : undefined,
-          coverImageUrl: selectedBook.coverImageUrl
-            ? String(selectedBook.coverImageUrl)
-            : undefined,
-          genre: selectedGenre
-            ? String(selectedGenre)
-            : selectedBook.genre
-              ? String(selectedBook.genre)
-              : undefined,
-          pageCount: selectedBook.pageCount ? Number(selectedBook.pageCount) : undefined,
+          title: selectedBook.title || '',
+          author: selectedBook.author,
+          isbn: selectedBook.isbn,
+          publisher: selectedBook.publisher,
+          publishedYear: selectedBook.publishedYear,
+          description: selectedBook.description,
+          coverImageUrl: selectedBook.coverImageUrl,
+          genre,
+          pageCount: selectedBook.pageCount,
         });
-        bookId = Number(newBook.id);
+        bookId = newBook.id;
       }
 
       await addBookToLibrary(libraryId, bookId, 0, forceAdd);
