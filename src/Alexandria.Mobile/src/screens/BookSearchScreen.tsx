@@ -88,7 +88,7 @@ export default function BookSearchScreen({ navigation }: any) {
     }
   };
 
-  const confirmAddToLibrary = async () => {
+  const confirmAddToLibrary = async (forceAdd: boolean = false) => {
     if (!selectedBook || !selectedLibrary) {
       Alert.alert('Error', 'Please select a library');
       return;
@@ -114,15 +114,31 @@ export default function BookSearchScreen({ navigation }: any) {
         bookId = newBook.id;
       }
       
-      await addBookToLibrary(selectedLibrary.id, bookId);
+      await addBookToLibrary(selectedLibrary.id, bookId, 0, forceAdd);
       Alert.alert('Success', `"${selectedBook.title}" has been added to ${selectedLibrary.name}!`);
       setShowLibraryPicker(false);
       setSelectedBook(null);
       setSelectedLibrary(null);
       setSelectedGenre(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add book to library:', error);
-      Alert.alert('Error', 'Failed to add book to library. Please try again.');
+      
+      // Check if this is a duplicate book conflict (409)
+      if (error?.response?.status === 409 && error?.response?.data?.isDuplicate) {
+        Alert.alert(
+          'Book Already in Library',
+          'This book is already in your library. Do you want to add another copy?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Add Another Copy', 
+              onPress: () => confirmAddToLibrary(true)
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to add book to library. Please try again.');
+      }
     } finally {
       setAddingToLibrary(false);
     }

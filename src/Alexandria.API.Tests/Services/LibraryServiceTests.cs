@@ -126,11 +126,7 @@ public class LibraryServiceTests : ServiceTestBase
     {
         // Arrange
         var user = await SeedUserAsync();
-        var request = new CreateLibraryRequest
-        {
-            Name = "My New Library",
-            IsPublic = true
-        };
+        var request = new CreateLibraryRequest { Name = "My New Library", IsPublic = true };
 
         // Act
         var result = await _sut.CreateLibraryAsync(user.Id, request);
@@ -184,24 +180,21 @@ public class LibraryServiceTests : ServiceTestBase
         var user = await SeedUserAsync();
         await SeedBooksAsync();
         var library = await SeedLibraryAsync(user.Id);
-        var request = new AddBookToLibraryRequest
-        {
-            BookId = 1,
-            Status = BookStatus.Available
-        };
+        var request = new AddBookToLibraryRequest { BookId = 1, Status = BookStatus.Available };
 
         // Act
         var result = await _sut.AddBookToLibraryAsync(library.Id, user.Id, request);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(library.Id, result.LibraryId);
-        Assert.Equal(BookStatus.Available, result.Status);
-        Assert.Equal("The Great Gatsby", result.Book.Title);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Data);
+        Assert.Equal(library.Id, result.Data.LibraryId);
+        Assert.Equal(BookStatus.Available, result.Data.Status);
+        Assert.Equal("The Great Gatsby", result.Data.Book.Title);
     }
 
     [Fact]
-    public async Task AddBookToLibraryAsync_WithNonOwner_ReturnsNull()
+    public async Task AddBookToLibraryAsync_WithNonOwner_ReturnsFailure()
     {
         // Arrange
         var owner = await SeedUserAsync(1);
@@ -214,11 +207,12 @@ public class LibraryServiceTests : ServiceTestBase
         var result = await _sut.AddBookToLibraryAsync(library.Id, otherUser.Id, request);
 
         // Assert
-        Assert.Null(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Not found", result.Error);
     }
 
     [Fact]
-    public async Task AddBookToLibraryAsync_WithInvalidBook_ReturnsNull()
+    public async Task AddBookToLibraryAsync_WithInvalidBook_ReturnsFailure()
     {
         // Arrange
         var user = await SeedUserAsync();
@@ -229,7 +223,49 @@ public class LibraryServiceTests : ServiceTestBase
         var result = await _sut.AddBookToLibraryAsync(library.Id, user.Id, request);
 
         // Assert
-        Assert.Null(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Not found", result.Error);
+    }
+
+    [Fact]
+    public async Task AddBookToLibraryAsync_DuplicateBook_ReturnsDuplicateError()
+    {
+        // Arrange
+        var user = await SeedUserAsync();
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(user.Id);
+        var request = new AddBookToLibraryRequest { BookId = 1 };
+
+        // Add book first time
+        await _sut.AddBookToLibraryAsync(library.Id, user.Id, request);
+
+        // Act - Try to add same book again
+        var result = await _sut.AddBookToLibraryAsync(library.Id, user.Id, request);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Duplicate", result.Error);
+    }
+
+    [Fact]
+    public async Task AddBookToLibraryAsync_DuplicateBookWithForceAdd_Succeeds()
+    {
+        // Arrange
+        var user = await SeedUserAsync();
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(user.Id);
+        var request = new AddBookToLibraryRequest { BookId = 1 };
+
+        // Add book first time
+        await _sut.AddBookToLibraryAsync(library.Id, user.Id, request);
+
+        // Act - Add same book again with ForceAdd
+        var forceRequest = new AddBookToLibraryRequest { BookId = 1, ForceAdd = true };
+        var result = await _sut.AddBookToLibraryAsync(library.Id, user.Id, forceRequest);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Data);
     }
 
     [Fact]
@@ -260,7 +296,11 @@ public class LibraryServiceTests : ServiceTestBase
         var libraryBook = await SeedLibraryBookAsync(library.Id, 1);
 
         // Act
-        var result = await _sut.RemoveBookFromLibraryAsync(library.Id, libraryBook.Id, otherUser.Id);
+        var result = await _sut.RemoveBookFromLibraryAsync(
+            library.Id,
+            libraryBook.Id,
+            otherUser.Id
+        );
 
         // Assert
         Assert.False(result);

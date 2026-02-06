@@ -76,6 +76,12 @@ export interface Friend {
   createdAt: string;
 }
 
+export interface FriendRequest {
+  id: number;
+  fromUser: User;
+  createdAt: string;
+}
+
 // Book scanning types
 export enum BookSource {
   Local = 0,

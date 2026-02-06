@@ -33,7 +33,7 @@ public class BooksController(
 
         // First, search local database
         var books = await bookService.SearchBooksAsync(request, page, pageSize);
-        
+
         // If local results found, return them
         if (books.Any())
         {
@@ -41,12 +41,18 @@ public class BooksController(
         }
 
         // No local results - search external APIs
-        logger.LogInformation("No local results found, searching external APIs for query: {Query}", request.Query);
+        logger.LogInformation(
+            "No local results found, searching external APIs for query: {Query}",
+            request.Query
+        );
 
         // If ISBN provided, do ISBN lookup
         if (!string.IsNullOrEmpty(request.Isbn))
         {
-            var isbnResult = await bookLookupService.LookupByIsbnAsync(request.Isbn, cancellationToken);
+            var isbnResult = await bookLookupService.LookupByIsbnAsync(
+                request.Isbn,
+                cancellationToken
+            );
             if (isbnResult is not null)
             {
                 return Ok(new[] { MapPreviewToDto(isbnResult) });
@@ -63,26 +69,27 @@ public class BooksController(
                 pageSize,
                 cancellationToken
             );
-            
+
             return Ok(externalResults.Select(MapPreviewToDto));
         }
 
         return Ok(Array.Empty<BookDto>());
     }
 
-    private static BookDto MapPreviewToDto(BookPreviewDto preview) => new()
-    {
-        Id = preview.ExistingBookId ?? 0,
-        Title = preview.Title,
-        Author = preview.Author,
-        Isbn = preview.Isbn,
-        Publisher = preview.Publisher,
-        PublishedYear = preview.PublishedYear,
-        Description = preview.Description,
-        CoverImageUrl = preview.CoverImageUrl,
-        Genre = preview.Genre,
-        PageCount = preview.PageCount
-    };
+    private static BookDto MapPreviewToDto(BookPreviewDto preview) =>
+        new()
+        {
+            Id = preview.ExistingBookId ?? 0,
+            Title = preview.Title,
+            Author = preview.Author,
+            Isbn = preview.Isbn,
+            Publisher = preview.Publisher,
+            PublishedYear = preview.PublishedYear,
+            Description = preview.Description,
+            CoverImageUrl = preview.CoverImageUrl,
+            Genre = preview.Genre,
+            PageCount = preview.PageCount,
+        };
 
     [HttpGet("{id}")]
     public async Task<ActionResult<BookDto>> GetBook(int id)
@@ -187,22 +194,25 @@ public class BooksController(
         }
 
         // Second priority: try title search if we found potential titles
+        // Try multiple title candidates since OCR may split text across lines
         if (ocrResult.DetectedTitles.Count > 0)
         {
-            var title = ocrResult.DetectedTitles.First();
-            logger.LogInformation("No ISBN found, searching by title: '{Title}'", title);
-
-            var searchResults = await bookLookupService.SearchAsync(
-                title,
-                maxResults: 1,
-                cancellationToken: cancellationToken
-            );
-            var topResult = searchResults.FirstOrDefault();
-
-            if (topResult is not null)
+            foreach (var title in ocrResult.DetectedTitles.Take(5))
             {
-                topResult.Confidence = ocrResult.Confidence * 0.8; // Lower confidence for title-based search
-                return Ok(topResult);
+                logger.LogInformation("No ISBN found, searching by title: '{Title}'", title);
+
+                var searchResults = await bookLookupService.SearchAsync(
+                    title,
+                    maxResults: 1,
+                    cancellationToken: cancellationToken
+                );
+                var topResult = searchResults.FirstOrDefault();
+
+                if (topResult is not null)
+                {
+                    topResult.Confidence = ocrResult.Confidence * 0.8; // Lower confidence for title-based search
+                    return Ok(topResult);
+                }
             }
         }
 

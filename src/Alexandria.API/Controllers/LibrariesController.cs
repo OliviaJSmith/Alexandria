@@ -78,10 +78,23 @@ public class LibrariesController(
 
         var result = await libraryService.AddBookToLibraryAsync(id, userId, request);
 
-        if (result is null)
-            return NotFound("Library or book not found");
+        if (!result.IsSuccess)
+        {
+            return result.Error switch
+            {
+                "Not found" => NotFound("Library or book not found"),
+                "Duplicate" => Conflict(
+                    new
+                    {
+                        message = "This book is already in your library. Add another copy?",
+                        isDuplicate = true,
+                    }
+                ),
+                _ => BadRequest(result.Error),
+            };
+        }
 
-        return Ok(result);
+        return Ok(result.Data);
     }
 
     [HttpDelete("{libraryId}/books/{libraryBookId}")]
@@ -106,16 +119,22 @@ public class LibrariesController(
 
     [HttpPatch("{libraryId}/books/{libraryBookId}")]
     public async Task<ActionResult<LibraryBookDto>> UpdateLibraryBook(
-        int libraryId, 
-        int libraryBookId, 
-        UpdateLibraryBookRequest request)
+        int libraryId,
+        int libraryBookId,
+        UpdateLibraryBookRequest request
+    )
     {
         var userId = GetCurrentUserId();
 
         if (!await libraryService.UserOwnsLibraryAsync(libraryId, userId))
             return Forbid();
 
-        var result = await libraryService.UpdateLibraryBookAsync(libraryId, libraryBookId, userId, request);
+        var result = await libraryService.UpdateLibraryBookAsync(
+            libraryId,
+            libraryBookId,
+            userId,
+            request
+        );
 
         if (result is null)
             return NotFound("Book not found in library");
@@ -125,9 +144,10 @@ public class LibrariesController(
 
     [HttpPost("{libraryId}/books/{libraryBookId}/move")]
     public async Task<ActionResult<LibraryBookDto>> MoveBookToLibrary(
-        int libraryId, 
-        int libraryBookId, 
-        MoveBookToLibraryRequest request)
+        int libraryId,
+        int libraryBookId,
+        MoveBookToLibraryRequest request
+    )
     {
         var userId = GetCurrentUserId();
 
@@ -138,10 +158,11 @@ public class LibrariesController(
             return Forbid();
 
         var result = await libraryService.MoveBookToLibraryAsync(
-            libraryId, 
-            libraryBookId, 
-            request.TargetLibraryId, 
-            userId);
+            libraryId,
+            libraryBookId,
+            request.TargetLibraryId,
+            userId
+        );
 
         if (result is null)
             return NotFound("Book not found in library");
@@ -217,17 +238,13 @@ public class LibrariesController(
 
                 confirmedResult.BookId = bookId;
 
-                // Add book to library
-                var addRequest = new AddBookToLibraryRequest { BookId = bookId };
-                var libraryBook = await libraryService.AddBookToLibraryAsync(
-                    id,
-                    userId,
-                    addRequest
-                );
+                // Add book to library (force add to allow duplicates during bulk scan)
+                var addRequest = new AddBookToLibraryRequest { BookId = bookId, ForceAdd = true };
+                var addResult = await libraryService.AddBookToLibraryAsync(id, userId, addRequest);
 
-                if (libraryBook is not null)
+                if (addResult.IsSuccess)
                 {
-                    confirmedResult.LibraryBookId = libraryBook.Id;
+                    confirmedResult.LibraryBookId = addResult.Data!.Id;
                     confirmedResult.AddedToLibrary = true;
                     result.SuccessCount++;
                 }

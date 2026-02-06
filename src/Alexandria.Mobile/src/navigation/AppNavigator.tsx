@@ -16,6 +16,7 @@ import LoginScreen from "../screens/LoginScreen";
 import BookSearchScreen from "../screens/BookSearchScreen";
 import LibrariesScreen from "../screens/LibrariesScreen";
 import LoansScreen from "../screens/LoansScreen";
+import FriendsScreen from "../screens/FriendsScreen";
 import ImageSearchScreen from "../screens/ImageSearchScreen";
 import BookshelfScanScreen from "../screens/BookshelfScanScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -84,6 +85,11 @@ function MainTabs({ navigation }: { navigation: any }) {
         name="Profile"
         component={ProfileScreen}
         options={{ title: "Profile" }}
+      />
+      <Tab.Screen
+        name="Friends"
+        component={FriendsScreen}
+        options={{ title: 'Friends' }}
       />
     </Tab.Navigator>
   );
