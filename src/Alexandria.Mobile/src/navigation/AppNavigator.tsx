@@ -13,7 +13,13 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
-import { faMagnifyingGlass, faBook, faHandshake, faUser, faUserGroup } from "@fortawesome/free-solid-svg-icons";
+import {
+  faMagnifyingGlass,
+  faBook,
+  faHandshake,
+  faUser,
+  faUserGroup,
+} from "@fortawesome/free-solid-svg-icons";
 import LoginScreen from "../screens/LoginScreen";
 import BookSearchScreen from "../screens/BookSearchScreen";
 import LibrariesScreen from "../screens/LibrariesScreen";
@@ -74,7 +80,11 @@ function MainTabs({ navigation }: { navigation: any }) {
         options={{
           title: "Search Books",
           tabBarIcon: ({ color, size }) => (
-            <FontAwesomeIcon icon={faMagnifyingGlass} size={size} color={color} />
+            <FontAwesomeIcon
+              icon={faMagnifyingGlass}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
