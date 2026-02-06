@@ -12,6 +12,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
+import { faMagnifyingGlass, faBook, faHandshake, faUser, faUserGroup } from "@fortawesome/free-solid-svg-icons";
 import LoginScreen from "../screens/LoginScreen";
 import BookSearchScreen from "../screens/BookSearchScreen";
 import LibrariesScreen from "../screens/LibrariesScreen";
@@ -69,27 +71,52 @@ function MainTabs({ navigation }: { navigation: any }) {
       <Tab.Screen
         name="Search"
         component={BookSearchScreen}
-        options={{ title: "Search Books" }}
+        options={{
+          title: "Search Books",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesomeIcon icon={faMagnifyingGlass} size={size} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Libraries"
         component={LibrariesScreen}
-        options={{ title: "My Libraries" }}
+        options={{
+          title: "My Libraries",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesomeIcon icon={faBook} size={size} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Loans"
         component={LoansScreen}
-        options={{ title: "Loans" }}
+        options={{
+          title: "Loans",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesomeIcon icon={faHandshake} size={size} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: "Profile" }}
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesomeIcon icon={faUser} size={size} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Friends"
         component={FriendsScreen}
-        options={{ title: 'Friends' }}
+        options={{
+          title: "Friends",
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesomeIcon icon={faUserGroup} size={size} color={color} />
+          ),
+        }}
       />
     </Tab.Navigator>
   );
