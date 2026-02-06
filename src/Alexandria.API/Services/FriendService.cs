@@ -30,6 +30,7 @@ public class FriendService(AlexandriaDbContext context, ILogger<FriendService> l
                     Id = friend.Id,
                     Email = friend.Email,
                     Name = friend.Name,
+                    UserName = friend.UserName,
                     ProfilePictureUrl = friend.ProfilePictureUrl,
                 },
                 CreatedAt = f.CreatedAt,

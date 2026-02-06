@@ -2,6 +2,13 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  userName?: string;
+  profilePictureUrl?: string;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  userName?: string;
   profilePictureUrl?: string;
 }
 

@@ -369,3 +369,20 @@ export const removeAuthToken = async (): Promise<void> => {
 export const logout = async (): Promise<void> => {
   await AsyncStorage.removeItem("authToken");
 };
+
+// Users API
+export const updateCurrentUser = async (
+  data: UpdateUserRequest,
+): Promise<User> => {
+  const response = await api.put("/users/me", data);
+  return response.data;
+};
+
+export const checkUserNameAvailability = async (
+  userName: string,
+): Promise<boolean> => {
+  const response = await api.get("/users/check-username", {
+    params: { userName },
+  });
+  return response.data.available;
+};
