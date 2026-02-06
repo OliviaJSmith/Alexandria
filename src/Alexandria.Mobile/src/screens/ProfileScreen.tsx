@@ -149,7 +149,6 @@ export default function ProfileScreen({ navigation }: any) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
         {!isEditing && (
           <TouchableOpacity
             style={styles.editButton}
