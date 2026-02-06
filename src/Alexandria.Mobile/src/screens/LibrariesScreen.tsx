@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ScrollView, Image, Platform, Switch } from 'react-native';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import { faArrowLeft, faMagnifyingGlass, faCamera, faBookOpen, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { getLibraries, getLibraryBooks, removeBookFromLibrary, updateLibraryBook, moveBookToLibrary, createLibrary } from '../services/api';
 import { Library, LibraryBook, BookStatus } from '../types';
 
@@ -214,7 +216,8 @@ export default function LibrariesScreen({ navigation }: any) {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => setSelectedLibrary(null)}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <FontAwesomeIcon icon={faArrowLeft} size={16} color="#1A1A1A" />
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{selectedLibrary.name}</Text>
         </View>
@@ -227,19 +230,22 @@ export default function LibrariesScreen({ navigation }: any) {
               style={styles.addBookButton}
               onPress={() => navigation.navigate('Search')}
             >
-              <Text style={styles.addBookButtonText}>🔍 Search</Text>
+              <FontAwesomeIcon icon={faMagnifyingGlass} size={14} color="#E5A823" />
+              <Text style={styles.addBookButtonText}>Search</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.addBookButton}
               onPress={() => navigation.navigate('ImageSearch')}
             >
-              <Text style={styles.addBookButtonText}>📷 Scan Book</Text>
+              <FontAwesomeIcon icon={faCamera} size={14} color="#E5A823" />
+              <Text style={styles.addBookButtonText}>Scan Book</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.addBookButton}
               onPress={() => navigation.navigate('BookshelfScan')}
             >
-              <Text style={styles.addBookButtonText}>📚 Scan Shelf</Text>
+              <FontAwesomeIcon icon={faBookOpen} size={14} color="#E5A823" />
+              <Text style={styles.addBookButtonText}>Scan Shelf</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -472,7 +478,8 @@ export default function LibrariesScreen({ navigation }: any) {
           style={styles.createLibraryButton}
           onPress={() => setShowCreateLibraryModal(true)}
         >
-          <Text style={styles.createLibraryButtonText}>+ Create New Library</Text>
+          <FontAwesomeIcon icon={faPlus} size={14} color="#121212" />
+          <Text style={styles.createLibraryButtonText}>Create New Library</Text>
         </TouchableOpacity>
       )}
 
@@ -654,6 +661,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   backButtonText: {
     color: '#1A1A1A',
@@ -883,7 +893,10 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     paddingVertical: 12,
     borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   createLibraryButtonText: {
     color: '#1A1A1A',
@@ -941,9 +954,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#3C3C3C',
+    gap: 6,
   },
   addBookButtonText: {
     color: '#E5A823',
