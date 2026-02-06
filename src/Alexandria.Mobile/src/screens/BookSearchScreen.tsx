@@ -353,15 +353,7 @@ export default function BookSearchScreen({ navigation }: any) {
                           styles.libraryOption,
                           selectedLibrary?.id === library.id && styles.libraryOptionSelected,
                         ]}
-                        onPress={() =>
-                          setSelectedLibrary({
-                            id: library.id,
-                            name: library.name,
-                            isPublic: library.isPublic,
-                            userId: library.userId,
-                            createdAt: library.createdAt,
-                          })
-                        }
+                        onPress={() => setSelectedLibrary(library)}
                         disabled={addingToLibrary}
                       >
                         <View style={styles.libraryOptionContent}>
