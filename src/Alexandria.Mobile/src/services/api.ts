@@ -118,15 +118,11 @@ export const addBookToLibrary = async (
   status: number = 0,
   forceAdd: boolean = false
 ): Promise<LibraryBook> => {
-  // Explicitly construct a plain object to avoid any potential circular references
-  const requestData = JSON.parse(
-    JSON.stringify({
-      bookId: Number(bookId),
-      status: Number(status),
-      forceAdd: Boolean(forceAdd),
-    })
-  );
-  const response = await api.post(`/libraries/${libraryId}/books`, requestData);
+  const response = await api.post(`/libraries/${libraryId}/books`, {
+    bookId: Number(bookId),
+    status: Number(status),
+    forceAdd: Boolean(forceAdd),
+  });
   return response.data;
 };
 
