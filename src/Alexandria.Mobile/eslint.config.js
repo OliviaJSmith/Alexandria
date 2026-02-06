@@ -46,7 +46,7 @@ module.exports = [
       '@typescript-eslint/no-explicit-any': 'warn',
 
       // General
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
     },
   },
 ];
