@@ -59,7 +59,9 @@ export const getBook = async (id: number): Promise<Book> => {
 };
 
 export const createBook = async (book: Partial<Book>): Promise<Book> => {
-  const response = await api.post("/books", book);
+  // Explicitly create a plain object to avoid any potential circular references
+  const requestData = JSON.parse(JSON.stringify(book));
+  const response = await api.post("/books", requestData);
   return response.data;
 };
 
@@ -118,11 +120,15 @@ export const addBookToLibrary = async (
   status: number = 0,
   forceAdd: boolean = false,
 ): Promise<LibraryBook> => {
-  const response = await api.post(`/libraries/${libraryId}/books`, {
-    bookId,
-    status,
-    forceAdd,
-  });
+  // Explicitly construct a plain object to avoid any potential circular references
+  const requestData = JSON.parse(
+    JSON.stringify({
+      bookId: Number(bookId),
+      status: Number(status),
+      forceAdd: Boolean(forceAdd),
+    }),
+  );
+  const response = await api.post(`/libraries/${libraryId}/books`, requestData);
   return response.data;
 };
 
