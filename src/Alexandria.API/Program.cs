@@ -9,6 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Load local settings override (gitignored)
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 
+// Add Azure Key Vault configuration via Aspire service discovery
+// When running in Aspire, this automatically resolves the "keyvault" service reference
+builder.Configuration.AddAzureKeyVaultSecrets("keyvault");
+
 // Add services to the container.
 builder.Services.AddControllers();
 

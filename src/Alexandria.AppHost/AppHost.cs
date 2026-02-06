@@ -1,5 +1,8 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+// Add Azure Key Vault for configuration management
+var keyVault = builder.AddAzureKeyVault("keyvault");
+
 // Add PostgreSQL database with data persistence
 var postgres = builder
     .AddPostgres("postgres")
@@ -12,6 +15,7 @@ var alexandriaDb = postgres.AddDatabase("alexandria");
 var api = builder
     .AddProject<Projects.Alexandria_API>("alexandria-api")
     .WithReference(alexandriaDb)
+    .WithReference(keyVault)
     .WithExternalHttpEndpoints();
 
 // Add the Mobile app (Expo/React Native web)
