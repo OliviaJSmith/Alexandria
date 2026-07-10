@@ -9,6 +9,7 @@ import {
   Friend,
   FriendRequest,
   User,
+  UpdateUserRequest,
   BookPreview,
   ConfirmBooksRequest,
   ConfirmBooksResult,
@@ -187,6 +188,17 @@ export const createLoan = async (loan: {
   return response.data;
 };
 
+export const requestLoan = async (
+  libraryBookId: number,
+  dueDate?: string,
+): Promise<Loan> => {
+  const response = await api.post("/loans/request", {
+    libraryBookId,
+    dueDate,
+  });
+  return response.data;
+};
+
 export const updateLoanStatus = async (
   id: number,
   status: number,
@@ -218,6 +230,22 @@ export const searchUserByEmail = async (
     }
     throw error;
   }
+};
+
+export const searchUsersByUserName = async (
+  userName: string,
+): Promise<User[]> => {
+  const response = await api.get("/friends/search-by-username", {
+    params: { userName },
+  });
+  return response.data;
+};
+
+export const getFriendLibraries = async (
+  friendId: number,
+): Promise<Library[]> => {
+  const response = await api.get(`/friends/${friendId}/libraries`);
+  return response.data;
 };
 
 export const sendFriendRequest = async (friendId: number): Promise<void> => {

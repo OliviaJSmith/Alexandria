@@ -8,7 +8,8 @@ namespace Alexandria.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class FriendsController(IFriendService friendService) : BaseController
+public class FriendsController(IFriendService friendService, ILibraryService libraryService)
+    : BaseController
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<FriendDto>>> GetFriends()
@@ -39,6 +40,31 @@ public class FriendsController(IFriendService friendService) : BaseController
             return NotFound("No user found with that email");
 
         return Ok(user);
+    }
+
+    [HttpGet("search-by-username")]
+    public async Task<ActionResult<IEnumerable<UserDto>>> SearchUsersByUserName(
+        [FromQuery] string userName
+    )
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+            return BadRequest("Username is required");
+
+        var userId = GetCurrentUserId();
+        var users = await friendService.SearchUsersByUserNameAsync(userId, userName);
+        return Ok(users);
+    }
+
+    [HttpGet("{friendId}/libraries")]
+    public async Task<ActionResult<IEnumerable<LibraryDto>>> GetFriendLibraries(int friendId)
+    {
+        var userId = GetCurrentUserId();
+
+        if (!await friendService.AreFriendsAsync(userId, friendId))
+            return NotFound("You are not friends with this user");
+
+        var libraries = await libraryService.GetLibrariesByOwnerAsync(friendId);
+        return Ok(libraries);
     }
 
     [HttpPost("{friendId}")]

@@ -93,8 +93,8 @@ export default function ImageSearchScreen() {
       setEditedPreview({ ...result });
     } catch (error: any) {
       console.error('Scan error:', error);
-      if (error.response?.status === 404) {
-        Alert.alert('Not Found', 'Could not identify the book from this image. Try a clearer photo or manual entry.');
+      if (error.response?.status === 404 || error.response?.status === 422) {
+        Alert.alert('Not Found', error.response?.data?.message || 'Could not identify the book from this image. Try a clearer photo or manual entry.');
       } else {
         Alert.alert('Error', 'Failed to scan book. Please try again.');
       }

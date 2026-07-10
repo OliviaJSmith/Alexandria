@@ -27,6 +27,12 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         return libraries.Select(MapToDto);
     }
 
+    public async Task<IEnumerable<LibraryDto>> GetLibrariesByOwnerAsync(int ownerId)
+    {
+        var libraries = await context.Libraries.Where(l => l.UserId == ownerId).ToListAsync();
+        return libraries.Select(MapToDto);
+    }
+
     public async Task<LibraryDto?> GetLibraryByIdAsync(int id, int userId)
     {
         var library = await context.Libraries.FindAsync(id);
@@ -34,7 +40,7 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         if (library is null)
             return null;
 
-        if (!library.IsPublic && library.UserId != userId)
+        if (!library.IsPublic && library.UserId != userId && !await AreFriendsAsync(library.UserId, userId))
             return null;
 
         return MapToDto(library);
@@ -223,7 +229,26 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
     public async Task<bool> UserHasAccessToLibraryAsync(int libraryId, int userId)
     {
         var library = await context.Libraries.FindAsync(libraryId);
-        return library is not null && (library.IsPublic || library.UserId == userId);
+
+        if (library is null)
+            return false;
+
+        if (library.IsPublic || library.UserId == userId)
+            return true;
+
+        // Friends can view each other's libraries
+        return await AreFriendsAsync(library.UserId, userId);
+    }
+
+    private async Task<bool> AreFriendsAsync(int userId, int otherUserId)
+    {
+        return await context.Friendships.AnyAsync(f =>
+            f.Status == FriendshipStatus.Accepted
+            && (
+                (f.RequesterId == userId && f.AddresseeId == otherUserId)
+                || (f.RequesterId == otherUserId && f.AddresseeId == userId)
+            )
+        );
     }
 
     public async Task<bool> UserOwnsLibraryAsync(int libraryId, int userId)

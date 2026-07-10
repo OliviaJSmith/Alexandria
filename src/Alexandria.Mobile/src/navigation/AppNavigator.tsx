@@ -27,6 +27,7 @@ import LoansScreen from "../screens/LoansScreen";
 import FriendsScreen from "../screens/FriendsScreen";
 import ImageSearchScreen from "../screens/ImageSearchScreen";
 import BookshelfScanScreen from "../screens/BookshelfScanScreen";
+import FriendLibraryScreen from "../screens/FriendLibraryScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import { getAuthToken, logout } from "../services/api";
 
@@ -204,6 +205,16 @@ export default function AppNavigator() {
                 options={{
                   headerShown: true,
                   title: "Scan a Book",
+                  headerStyle: { backgroundColor: "#1E1E1E" },
+                  headerTintColor: "#FFFFFF",
+                }}
+              />
+              <Stack.Screen
+                name="FriendLibrary"
+                component={FriendLibraryScreen}
+                options={{
+                  headerShown: true,
+                  title: "Friend's Libraries",
                   headerStyle: { backgroundColor: "#1E1E1E" },
                   headerTintColor: "#FFFFFF",
                 }}

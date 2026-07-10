@@ -30,7 +30,7 @@ export default {
     plugins: ["expo-web-browser"],
     scheme: "alexandria",
     extra: {
-      apiBaseUrl: process.env.API_BASE_URL || "http://localhost:5274/api",
+      apiBaseUrl: process.env.API_BASE_URL || "https://localhost:7232/api",
       googleWebClientId:
         process.env.GOOGLE_WEB_CLIENT_ID ||
         "1079278733225-2a62r2vj87e7gr0fcrlgefn51q8hbt0q.apps.googleusercontent.com",

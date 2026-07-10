@@ -50,6 +50,27 @@ public class LoansController(ILoanService loanService, ILogger<LoansController> 
         return CreatedAtAction(nameof(GetLoan), new { id = result.Data!.Id }, result.Data);
     }
 
+    /// <summary>
+    /// Requests to borrow a friend's book. Creates a Pending loan the lender can approve or decline.
+    /// </summary>
+    [HttpPost("request")]
+    public async Task<ActionResult<LoanDto>> RequestLoan(RequestLoanRequest request)
+    {
+        var userId = GetCurrentUserId();
+        var result = await loanService.RequestLoanAsync(userId, request);
+
+        if (!result.IsSuccess)
+        {
+            return result.Error switch
+            {
+                "Library book not found" => NotFound(result.Error),
+                _ => BadRequest(result.Error)
+            };
+        }
+
+        return CreatedAtAction(nameof(GetLoan), new { id = result.Data!.Id }, result.Data);
+    }
+
     [HttpPatch("{id}/status")]
     public async Task<ActionResult<LoanDto>> UpdateLoanStatus(int id, UpdateLoanStatusRequest request)
     {

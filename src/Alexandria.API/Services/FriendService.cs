@@ -53,6 +53,7 @@ public class FriendService(AlexandriaDbContext context, ILogger<FriendService> l
                 Id = f.Requester.Id,
                 Email = f.Requester.Email,
                 Name = f.Requester.Name,
+                UserName = f.Requester.UserName,
                 ProfilePictureUrl = f.Requester.ProfilePictureUrl,
             },
             CreatedAt = f.CreatedAt,
@@ -73,8 +74,47 @@ public class FriendService(AlexandriaDbContext context, ILogger<FriendService> l
             Id = user.Id,
             Email = user.Email,
             Name = user.Name,
+            UserName = user.UserName,
             ProfilePictureUrl = user.ProfilePictureUrl,
         };
+    }
+
+    public async Task<IEnumerable<UserDto>> SearchUsersByUserNameAsync(
+        int currentUserId,
+        string userName
+    )
+    {
+        var normalized = userName.Trim().ToLower();
+
+        var users = await context
+            .Users.Where(u =>
+                u.Id != currentUserId
+                && u.UserName != null
+                && u.UserName.ToLower().Contains(normalized)
+            )
+            .OrderBy(u => u.UserName)
+            .Take(10)
+            .ToListAsync();
+
+        return users.Select(u => new UserDto
+        {
+            Id = u.Id,
+            Email = u.Email,
+            Name = u.Name,
+            UserName = u.UserName,
+            ProfilePictureUrl = u.ProfilePictureUrl,
+        });
+    }
+
+    public async Task<bool> AreFriendsAsync(int userId, int otherUserId)
+    {
+        return await context.Friendships.AnyAsync(f =>
+            f.Status == FriendshipStatus.Accepted
+            && (
+                (f.RequesterId == userId && f.AddresseeId == otherUserId)
+                || (f.RequesterId == otherUserId && f.AddresseeId == userId)
+            )
+        );
     }
 
     public async Task<ServiceResult> SendFriendRequestAsync(int userId, int friendId)

@@ -229,10 +229,11 @@ public class BooksController(
             );
         }
 
-        return NotFound(
+        // Return 422 Unprocessable Entity instead of 404 - the endpoint exists but couldn't process the image
+        return UnprocessableEntity(
             new
             {
-                message = "Could not extract book information from image",
+                message = "Could not extract book information from image. Try a clearer photo with visible text or barcode.",
                 rawText = ocrResult.RawText,
             }
         );
