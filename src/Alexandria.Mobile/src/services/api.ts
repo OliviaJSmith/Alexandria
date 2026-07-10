@@ -355,12 +355,14 @@ export interface AuthResponse {
 
 export const loginWithGoogle = async (
   googleAccessToken: string,
+  acceptedTerms: boolean,
 ): Promise<AuthResponse> => {
   console.log("loginWithGoogle: Making request to /auth/google");
   console.log("loginWithGoogle: Token length:", googleAccessToken?.length);
   try {
     const response = await api.post("/auth/google", {
       accessToken: googleAccessToken,
+      acceptedTerms,
     });
     console.log("loginWithGoogle: Response received", response.status);
     // Store the JWT token
@@ -380,6 +382,15 @@ export const loginWithGoogle = async (
 export const getCurrentUser = async (): Promise<AuthResponse["user"]> => {
   const response = await api.get("/auth/me");
   return response.data;
+};
+
+// Beta terms acceptance (remembered on this device)
+export const getTermsAcceptedAt = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem("termsAcceptedAt");
+};
+
+export const setTermsAccepted = async (): Promise<void> => {
+  await AsyncStorage.setItem("termsAcceptedAt", new Date().toISOString());
 };
 
 export const setAuthToken = async (token: string): Promise<void> => {

@@ -35,6 +35,11 @@ public class AuthController(
             return BadRequest("Access token is required");
         }
 
+        if (!request.AcceptedTerms)
+        {
+            return BadRequest("You must accept the beta terms and conditions to sign in");
+        }
+
         // Verify the Google token and get user info
         var googleUser = await VerifyGoogleTokenAsync(request.AccessToken);
         if (googleUser is null)
@@ -67,6 +72,7 @@ public class AuthController(
             await context.SaveChangesAsync();
             
             logger.LogInformation("Created new user {UserId} for Google account {Email} with username {UserName}", user.Id, user.Email, user.UserName);
+            logger.LogInformation("User {UserId} accepted the beta terms and conditions at {AcceptedAt}", user.Id, DateTime.UtcNow);
         }
         else
         {
@@ -207,6 +213,11 @@ public class AuthController(
 public class GoogleLoginRequest
 {
     public string AccessToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the user accepted the beta terms and conditions. Required to sign in.
+    /// </summary>
+    public bool AcceptedTerms { get; set; }
 }
 
 public class AuthResponse
