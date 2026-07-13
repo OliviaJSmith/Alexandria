@@ -8,7 +8,10 @@ import {
   Text,
   ActivityIndicator,
 } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+} from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -29,10 +32,16 @@ import ImageSearchScreen from "../screens/ImageSearchScreen";
 import BookshelfScanScreen from "../screens/BookshelfScanScreen";
 import FriendLibraryScreen from "../screens/FriendLibraryScreen";
 import ProfileScreen from "../screens/ProfileScreen";
-import { getAuthToken, logout } from "../services/api";
+import {
+  getAuthToken,
+  getCurrentUser,
+  logout,
+  setOnUnauthorized,
+} from "../services/api";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const navigationRef = createNavigationContainerRef();
 
 // Maximum content width for web to prevent overly wide layouts
 const MAX_CONTENT_WIDTH = 1200;
@@ -158,15 +167,34 @@ export default function AppNavigator() {
 
   useEffect(() => {
     checkAuthStatus();
+
+    // Any 401 from the API clears the stored token (see api.ts) and lands here:
+    // send the user back to the login screen.
+    setOnUnauthorized(() => {
+      setIsAuthenticated(false);
+      if (navigationRef.isReady()) {
+        navigationRef.resetRoot({ index: 0, routes: [{ name: "Login" }] });
+      }
+    });
+
+    return () => setOnUnauthorized(null);
   }, []);
 
   const checkAuthStatus = async () => {
     try {
       const token = await getAuthToken();
-      setIsAuthenticated(!!token);
-    } catch (error) {
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+      // Confirm the token is still accepted by the API, not just present
+      await getCurrentUser();
+      setIsAuthenticated(true);
+    } catch (error: any) {
       console.error("Error checking auth status:", error);
-      setIsAuthenticated(false);
+      // 401 means the token is dead; other errors (e.g. API unreachable)
+      // keep the session so a flaky network doesn't log the user out.
+      setIsAuthenticated(error?.response?.status !== 401 && !!(await getAuthToken()));
     } finally {
       setIsLoading(false);
     }
@@ -186,7 +214,7 @@ export default function AppNavigator() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ResponsiveContainer>
-          <NavigationContainer>
+          <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
               initialRouteName={isAuthenticated ? "Main" : "Login"}
               screenOptions={{

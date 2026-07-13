@@ -42,6 +42,27 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// When the API rejects our token (expired or invalid), clear it and let the
+// app send the user back to the login screen instead of failing every request.
+let onUnauthorized: (() => void) | null = null;
+
+export const setOnUnauthorized = (handler: (() => void) | null): void => {
+  onUnauthorized = handler;
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const isLoginAttempt = error.config?.url?.includes("/auth/google");
+    if (error.response?.status === 401 && !isLoginAttempt) {
+      console.warn("Session expired or invalid; signing out.");
+      await AsyncStorage.removeItem("authToken");
+      onUnauthorized?.();
+    }
+    return Promise.reject(error);
+  },
+);
+
 // Books API
 export const searchBooks = async (query: {
   query?: string;
