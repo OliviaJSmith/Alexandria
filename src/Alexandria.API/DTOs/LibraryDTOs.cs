@@ -17,6 +17,12 @@ public class CreateLibraryRequest
     public bool IsPublic { get; set; }
 }
 
+public class UpdateLibraryRequest
+{
+    public string? Name { get; set; }
+    public bool? IsPublic { get; set; }
+}
+
 public class LibraryBookDto
 {
     public int Id { get; set; }

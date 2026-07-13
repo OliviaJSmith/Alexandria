@@ -63,6 +63,29 @@ public class LibraryService(AlexandriaDbContext context, ILogger<LibraryService>
         return MapToDto(library);
     }
 
+    public async Task<LibraryDto?> UpdateLibraryAsync(int id, int userId, UpdateLibraryRequest request)
+    {
+        var library = await context.Libraries.FindAsync(id);
+
+        if (library is null || library.UserId != userId)
+            return null;
+
+        if (request.Name is not null && !string.IsNullOrWhiteSpace(request.Name))
+        {
+            library.Name = request.Name.Trim();
+        }
+
+        if (request.IsPublic.HasValue)
+        {
+            library.IsPublic = request.IsPublic.Value;
+        }
+
+        library.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+
+        return MapToDto(library);
+    }
+
     public async Task<IEnumerable<LibraryBookDto>> GetLibraryBooksAsync(int libraryId, int userId)
     {
         if (!await UserHasAccessToLibraryAsync(libraryId, userId))

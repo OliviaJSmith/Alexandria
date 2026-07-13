@@ -28,6 +28,8 @@ import {
   updateLibraryBook,
   moveBookToLibrary,
   createLibrary,
+  updateLibrary,
+  getCurrentUser,
 } from "../services/api";
 import { Library, LibraryBook, BookStatus } from "../types";
 
@@ -54,6 +56,14 @@ export default function LibrariesScreen({ navigation }: any) {
   const [selectedLibrary, setSelectedLibrary] = useState<Library | null>(null);
   const [libraryBooks, setLibraryBooks] = useState<LibraryBook[]>([]);
   const [showPublic, setShowPublic] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [updatingVisibility, setUpdatingVisibility] = useState(false);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then((user) => setCurrentUserId(user.id))
+      .catch((error) => console.error("Load current user error:", error));
+  }, []);
 
   // Edit modal state
   const [editingBook, setEditingBook] = useState<LibraryBook | null>(null);
@@ -131,6 +141,28 @@ export default function LibrariesScreen({ navigation }: any) {
   const handleLibraryPress = async (library: Library) => {
     setSelectedLibrary(library);
     await loadLibraryBooks(library.id);
+  };
+
+  const handleToggleVisibility = async (isPublic: boolean) => {
+    if (!selectedLibrary) return;
+
+    setUpdatingVisibility(true);
+    try {
+      const updated = await updateLibrary(selectedLibrary.id, { isPublic });
+      setSelectedLibrary(updated);
+      setLibraries(
+        libraries.map((lib) => (lib.id === updated.id ? updated : lib)),
+      );
+    } catch (error) {
+      console.error("Update library visibility error:", error);
+      if (Platform.OS === "web") {
+        window.alert("Failed to update library visibility");
+      } else {
+        Alert.alert("Error", "Failed to update library visibility");
+      }
+    } finally {
+      setUpdatingVisibility(false);
+    }
   };
 
   const handleBookPress = (book: LibraryBook) => {
@@ -289,6 +321,29 @@ export default function LibrariesScreen({ navigation }: any) {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{selectedLibrary.name}</Text>
         </View>
+
+        {/* Visibility Toggle - only for libraries the user owns */}
+        {selectedLibrary.userId === currentUserId && (
+          <View style={styles.visibilityBar}>
+            <View>
+              <Text style={styles.visibilityLabel}>
+                {selectedLibrary.isPublic ? "Public library" : "Private library"}
+              </Text>
+              <Text style={styles.visibilityHint}>
+                {selectedLibrary.isPublic
+                  ? "Anyone can browse this library"
+                  : "Only you and your friends can see this library"}
+              </Text>
+            </View>
+            <Switch
+              value={selectedLibrary.isPublic}
+              onValueChange={handleToggleVisibility}
+              disabled={updatingVisibility}
+              trackColor={{ false: "#3C3C3C", true: "#4CAF50" }}
+              thumbColor={selectedLibrary.isPublic ? "#FFFFFF" : "#CCCCCC"}
+            />
+          </View>
+        )}
 
         {/* Add Books Section */}
         <View style={styles.addBooksSection}>
@@ -1032,6 +1087,26 @@ const styles = StyleSheet.create({
   publicToggleLabel: {
     color: "#CCCCCC",
     fontSize: 16,
+  },
+  visibilityBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#1E1E1E",
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  visibilityLabel: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  visibilityHint: {
+    color: "#888",
+    fontSize: 12,
+    marginTop: 2,
   },
   addBooksSection: {
     backgroundColor: "#1E1E1E",

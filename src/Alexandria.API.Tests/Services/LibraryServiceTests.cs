@@ -30,6 +30,71 @@ public class LibraryServiceTests : ServiceTestBase
     }
 
     [Fact]
+    public async Task UpdateLibraryAsync_OwnerCanChangeVisibilityAndName()
+    {
+        // Arrange
+        var user = await SeedUserAsync();
+        var library = await SeedLibraryAsync(user.Id, isPublic: false);
+
+        // Act
+        var result = await _sut.UpdateLibraryAsync(
+            library.Id,
+            user.Id,
+            new UpdateLibraryRequest { IsPublic = true, Name = "Renamed" }
+        );
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.IsPublic);
+        Assert.Equal("Renamed", result.Name);
+
+        var updated = await Context.Libraries.FindAsync(library.Id);
+        Assert.True(updated!.IsPublic);
+    }
+
+    [Fact]
+    public async Task UpdateLibraryAsync_NonOwnerCannotUpdate()
+    {
+        // Arrange
+        var owner = await SeedUserAsync(1);
+        var otherUser = await SeedUserAsync(2);
+        var library = await SeedLibraryAsync(owner.Id, isPublic: true);
+
+        // Act
+        var result = await _sut.UpdateLibraryAsync(
+            library.Id,
+            otherUser.Id,
+            new UpdateLibraryRequest { IsPublic = false }
+        );
+
+        // Assert
+        Assert.Null(result);
+        var unchanged = await Context.Libraries.FindAsync(library.Id);
+        Assert.True(unchanged!.IsPublic);
+    }
+
+    [Fact]
+    public async Task UpdateLibraryAsync_IgnoresBlankNameAndKeepsVisibilityWhenOmitted()
+    {
+        // Arrange
+        var user = await SeedUserAsync();
+        var library = await SeedLibraryAsync(user.Id, isPublic: true);
+        var originalName = library.Name;
+
+        // Act
+        var result = await _sut.UpdateLibraryAsync(
+            library.Id,
+            user.Id,
+            new UpdateLibraryRequest { Name = "   " }
+        );
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(originalName, result.Name);
+        Assert.True(result.IsPublic);
+    }
+
+    [Fact]
     public async Task GetLibrariesAsync_WithPublicFilter_ReturnsPublicLibraries()
     {
         // Arrange

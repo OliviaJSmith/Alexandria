@@ -122,6 +122,14 @@ export const createLibrary = async (library: {
   return response.data;
 };
 
+export const updateLibrary = async (
+  id: number,
+  updates: { name?: string; isPublic?: boolean },
+): Promise<Library> => {
+  const response = await api.patch(`/libraries/${id}`, updates);
+  return response.data;
+};
+
 export const getLibraryBooks = async (
   libraryId: number,
 ): Promise<LibraryBook[]> => {
