@@ -5,8 +5,10 @@ namespace Alexandria.API.Services;
 public interface ILibraryService
 {
     Task<IEnumerable<LibraryDto>> GetLibrariesAsync(int userId, bool? isPublic);
+    Task<IEnumerable<LibraryDto>> GetLibrariesByOwnerAsync(int ownerId);
     Task<LibraryDto?> GetLibraryByIdAsync(int id, int userId);
     Task<LibraryDto> CreateLibraryAsync(int userId, CreateLibraryRequest request);
+    Task<LibraryDto?> UpdateLibraryAsync(int id, int userId, UpdateLibraryRequest request);
     Task<IEnumerable<LibraryBookDto>> GetLibraryBooksAsync(int libraryId, int userId);
     Task<IEnumerable<LibraryBookDto>> GetLentOutBooksAsync(int userId);
     Task<ServiceResult<LibraryBookDto>> AddBookToLibraryAsync(

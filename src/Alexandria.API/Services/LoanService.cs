@@ -92,6 +92,69 @@ public class LoanService(AlexandriaDbContext context, ILogger<LoanService> logge
         return ServiceResult<LoanDto>.Success(MapToDto(loan));
     }
 
+    public async Task<ServiceResult<LoanDto>> RequestLoanAsync(int borrowerId, RequestLoanRequest request)
+    {
+        var libraryBook = await context.LibraryBooks
+            .Include(lb => lb.Library)
+            .Include(lb => lb.Book)
+            .FirstOrDefaultAsync(lb => lb.Id == request.LibraryBookId);
+
+        if (libraryBook is null)
+            return ServiceResult<LoanDto>.Failure("Library book not found");
+
+        var lenderId = libraryBook.Library.UserId;
+
+        if (lenderId == borrowerId)
+            return ServiceResult<LoanDto>.Failure("You cannot borrow your own book");
+
+        var areFriends = await context.Friendships.AnyAsync(f =>
+            f.Status == FriendshipStatus.Accepted
+            && ((f.RequesterId == borrowerId && f.AddresseeId == lenderId)
+                || (f.RequesterId == lenderId && f.AddresseeId == borrowerId)));
+
+        if (!areFriends)
+            return ServiceResult<LoanDto>.Failure("You can only request books from friends");
+
+        if (libraryBook.Status != BookStatus.Available)
+            return ServiceResult<LoanDto>.Failure("Book is not available for loan");
+
+        var hasOpenRequest = await context.Loans.AnyAsync(l =>
+            l.LibraryBookId == request.LibraryBookId
+            && l.BorrowerId == borrowerId
+            && (l.Status == LoanStatus.Pending || l.Status == LoanStatus.Active));
+
+        if (hasOpenRequest)
+            return ServiceResult<LoanDto>.Failure("You already have an open request for this book");
+
+        var loan = new Loan
+        {
+            LibraryBookId = request.LibraryBookId,
+            LenderId = lenderId,
+            BorrowerId = borrowerId,
+            LoanDate = DateTime.UtcNow,
+            DueDate = request.DueDate,
+            Status = LoanStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        context.Loans.Add(loan);
+        await context.SaveChangesAsync();
+
+        logger.LogInformation(
+            "User {BorrowerId} requested to borrow library book {LibraryBookId} from user {LenderId}",
+            borrowerId, request.LibraryBookId, lenderId);
+
+        loan = await context.Loans
+            .Include(l => l.LibraryBook)
+                .ThenInclude(lb => lb.Book)
+            .Include(l => l.Lender)
+            .Include(l => l.Borrower)
+            .FirstAsync(l => l.Id == loan.Id);
+
+        return ServiceResult<LoanDto>.Success(MapToDto(loan));
+    }
+
     public async Task<ServiceResult<LoanDto>> UpdateLoanStatusAsync(int id, int userId, UpdateLoanStatusRequest request)
     {
         var loan = await context.Loans
@@ -106,6 +169,19 @@ public class LoanService(AlexandriaDbContext context, ILogger<LoanService> logge
 
         if (loan.BorrowerId != userId && loan.LenderId != userId)
             return ServiceResult<LoanDto>.Failure("Forbidden");
+
+        // Approving a pending request is the lender's call only
+        if (loan.Status == LoanStatus.Pending && request.Status == LoanStatus.Active)
+        {
+            if (loan.LenderId != userId)
+                return ServiceResult<LoanDto>.Failure("Only the lender can approve a borrow request");
+
+            if (loan.LibraryBook.Status != BookStatus.Available)
+                return ServiceResult<LoanDto>.Failure("Book is not available for loan");
+
+            loan.LoanDate = DateTime.UtcNow;
+            loan.LibraryBook.Status = BookStatus.CheckedOut;
+        }
 
         loan.Status = request.Status;
         loan.UpdatedAt = DateTime.UtcNow;

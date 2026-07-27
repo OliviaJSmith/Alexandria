@@ -254,4 +254,64 @@ public class FriendServiceTests : ServiceTestBase
         Assert.False(result.IsSuccess);
         Assert.Equal("Not found", result.Error);
     }
+
+    [Fact]
+    public async Task SearchUsersByUserNameAsync_MatchesPartialUserNameCaseInsensitive()
+    {
+        // Arrange
+        var user1 = await SeedUserAsync(1);
+        var user2 = await SeedUserAsync(2);
+        var user3 = await SeedUserAsync(3);
+        user2.UserName = "BookWorm42";
+        user3.UserName = "wormhole";
+        await Context.SaveChangesAsync();
+
+        // Act
+        var results = (await _sut.SearchUsersByUserNameAsync(user1.Id, "worm")).ToList();
+
+        // Assert
+        Assert.Equal(2, results.Count);
+        Assert.Contains(results, u => u.UserName == "BookWorm42");
+        Assert.Contains(results, u => u.UserName == "wormhole");
+    }
+
+    [Fact]
+    public async Task SearchUsersByUserNameAsync_ExcludesCurrentUser()
+    {
+        // Arrange
+        var user1 = await SeedUserAsync(1);
+        user1.UserName = "selfie";
+        await Context.SaveChangesAsync();
+
+        // Act
+        var results = await _sut.SearchUsersByUserNameAsync(user1.Id, "selfie");
+
+        // Assert
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public async Task AreFriendsAsync_ReturnsTrueForAcceptedFriendshipEitherDirection()
+    {
+        // Arrange
+        var user1 = await SeedUserAsync(1);
+        var user2 = await SeedUserAsync(2);
+        await SeedFriendshipAsync(user1.Id, user2.Id, FriendshipStatus.Accepted);
+
+        // Act & Assert
+        Assert.True(await _sut.AreFriendsAsync(user1.Id, user2.Id));
+        Assert.True(await _sut.AreFriendsAsync(user2.Id, user1.Id));
+    }
+
+    [Fact]
+    public async Task AreFriendsAsync_ReturnsFalseForPendingFriendship()
+    {
+        // Arrange
+        var user1 = await SeedUserAsync(1);
+        var user2 = await SeedUserAsync(2);
+        await SeedFriendshipAsync(user1.Id, user2.Id, FriendshipStatus.Pending);
+
+        // Act & Assert
+        Assert.False(await _sut.AreFriendsAsync(user1.Id, user2.Id));
+    }
 }

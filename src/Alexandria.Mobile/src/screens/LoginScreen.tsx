@@ -2,14 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { loginWithGoogle } from '../services/api';
+import { loginWithGoogle, getTermsAcceptedAt, setTermsAccepted } from '../services/api';
 import { config } from '../config';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const BETA_TERMS =
+  'I acknowledge that as a beta user there is no guarantee my data or account will be persisted ' +
+  'for any amount of time. Alexandria will notify all users ahead of time if accounts are to be ' +
+  'closed down or if payment will be needed to continue to service an account.';
+
 export default function LoginScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [termsChecked, setTermsChecked] = useState(false);
+
+  useEffect(() => {
+    // Pre-check the box if the user already accepted the terms on this device
+    getTermsAcceptedAt()
+      .then((acceptedAt) => setTermsChecked(!!acceptedAt))
+      .catch((error) => console.error('Failed to read terms acceptance:', error));
+  }, []);
   const [request, response, promptAsync] = Google.useAuthRequest({
     //androidClientId: config.google.androidClientId,
     //iosClientId: config.google.iosClientId,
@@ -35,7 +48,8 @@ export default function LoginScreen({ navigation }: any) {
         try {
           // Exchange Google token for Alexandria JWT token
           console.log('handleSignInResponse: Calling loginWithGoogle...');
-          const authResponse = await loginWithGoogle(authentication.accessToken);
+          const authResponse = await loginWithGoogle(authentication.accessToken, true);
+          await setTermsAccepted();
           console.log('handleSignInResponse: Login successful, user:', authResponse.user?.name);
           console.log('handleSignInResponse: Navigating to Main...');
           navigation.replace('Main');
@@ -63,6 +77,10 @@ export default function LoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     setErrorMessage(null);
+    if (!termsChecked) {
+      setErrorMessage('Please accept the beta terms and conditions to continue.');
+      return;
+    }
     if (!request) {
       Alert.alert('Error', 'Google Sign-In is not ready yet. Please try again.');
       return;
@@ -78,10 +96,29 @@ export default function LoginScreen({ navigation }: any) {
       <Text style={styles.subtitle}>Your Home Library</Text>
       
       <View style={styles.form}>
-        <TouchableOpacity 
-          style={[styles.button, (!request || isLoading) && styles.buttonDisabled]} 
+        <View style={styles.termsBox}>
+          <Text style={styles.termsTitle}>Beta Terms &amp; Conditions</Text>
+          <Text style={styles.termsText}>{BETA_TERMS}</Text>
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => {
+              setErrorMessage(null);
+              setTermsChecked(!termsChecked);
+            }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: termsChecked }}
+          >
+            <View style={[styles.checkbox, termsChecked && styles.checkboxChecked]}>
+              {termsChecked && <Text style={styles.checkboxMark}>✓</Text>}
+            </View>
+            <Text style={styles.checkboxLabel}>I acknowledge and agree to the terms above</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.button, (!request || isLoading || !termsChecked) && styles.buttonDisabled]}
           onPress={handleLogin}
-          disabled={!request || isLoading}
+          disabled={!request || isLoading || !termsChecked}
         >
           {!request || isLoading ? (
             <ActivityIndicator color="#1A1A1A" />
@@ -147,6 +184,54 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#FF6B6B',
     fontSize: 14,
+  },
+  termsBox: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  termsTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  termsText: {
+    color: '#B0B0B0',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#888',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  checkboxChecked: {
+    backgroundColor: '#E5A823',
+    borderColor: '#E5A823',
+  },
+  checkboxMark: {
+    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  checkboxLabel: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    flex: 1,
   },
   button: {
     backgroundColor: '#E5A823',

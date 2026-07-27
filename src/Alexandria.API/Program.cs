@@ -9,9 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Load local settings override (gitignored)
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 
-// Add Azure Key Vault configuration via Aspire service discovery
-// When running in Aspire, this automatically resolves the "keyvault" service reference
-builder.Configuration.AddAzureKeyVaultSecrets("keyvault");
+// Load secrets from Azure Key Vault when a vault is referenced (i.e. when deployed
+// via Aspire/azd). Locally no "keyvault" connection string exists, so this is skipped
+// and secrets come from appsettings.Local.json instead.
+if (!string.IsNullOrEmpty(builder.Configuration.GetConnectionString("keyvault")))
+{
+    builder.Configuration.AddAzureKeyVaultSecrets("keyvault");
+}
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -25,12 +29,13 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IBookLookupService, BookLookupService>();
 builder.Services.AddScoped<IOcrService, AzureOcrService>();
 
-// Configure Azure Computer Vision options with validation
+// Configure Azure Computer Vision options with validation.
+// Validated on first use (not at startup) so the app can run without OCR configured;
+// scan endpoints will fail with a clear validation error until secrets are provided.
 builder
     .Services.AddOptions<AzureOpenAiOptions>()
     .Bind(builder.Configuration.GetSection(AzureOpenAiOptions.SectionName))
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
+    .ValidateDataAnnotations();
 
 // Configure HTTP clients for external APIs
 builder.Services.AddHttpClient(
@@ -70,7 +75,7 @@ var jwtKey = builder.Configuration["Jwt:Key"] ?? "YourSecretKeyForAuthentication
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Alexandria";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "AlexandriaUsers";
 
-builder
+var authBuilder = builder
     .Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -88,12 +93,19 @@ builder
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
         };
-    })
-    .AddGoogle(options =>
-    {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
     });
+
+// Only add Google authentication if credentials are configured
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+{
+    authBuilder.AddGoogle(options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+    });
+}
 
 builder.Services.AddAuthorization();
 
@@ -103,6 +115,11 @@ var allowedOrigins =
     {
         "http://localhost:8081",
         "http://localhost:19006",
+        "http://localhost:61480",
+        "http://localhost:50484",
+        // Origin headers never include a trailing slash
+        "https://alexandria-mobile.delightfulocean-4bd7ffeb.eastus2.azurecontainerapps.io",
+        "https://alexandria-api.delightfulocean-4bd7ffeb.eastus2.azurecontainerapps.io"
     }; // Default to Expo dev ports
 
 builder.Services.AddCors(options =>

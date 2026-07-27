@@ -14,7 +14,7 @@ import {
 import {
     getFriends,
     getPendingFriendRequests,
-    searchUserByEmail,
+    searchUsersByUserName,
     sendFriendRequest,
     acceptFriendRequest,
     removeFriend,
@@ -23,7 +23,7 @@ import { Friend, FriendRequest, User } from '../types';
 
 type TabType = 'friends' | 'requests';
 
-export default function FriendsScreen() {
+export default function FriendsScreen({ navigation }: any) {
     const [activeTab, setActiveTab] = useState<TabType>('friends');
     const [friends, setFriends] = useState<Friend[]>([]);
     const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
@@ -31,11 +31,11 @@ export default function FriendsScreen() {
     const [refreshing, setRefreshing] = useState(false);
 
     // Search state
-    const [searchEmail, setSearchEmail] = useState('');
-    const [searchResult, setSearchResult] = useState<User | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<User[]>([]);
     const [searching, setSearching] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
-    const [sendingRequest, setSendingRequest] = useState(false);
+    const [sendingRequestTo, setSendingRequestTo] = useState<number | null>(null);
 
     const loadData = useCallback(async () => {
         try {
@@ -72,35 +72,21 @@ export default function FriendsScreen() {
     };
 
     const handleSearch = async () => {
-        if (!searchEmail.trim()) {
-            setSearchError('Please enter an email address');
-            return;
-        }
-
-        // Basic email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(searchEmail.trim())) {
-            setSearchError('Please enter a valid email address');
+        if (!searchQuery.trim()) {
+            setSearchError('Please enter a username');
             return;
         }
 
         setSearching(true);
         setSearchError(null);
-        setSearchResult(null);
+        setSearchResults([]);
 
         try {
-            const user = await searchUserByEmail(searchEmail.trim());
-            if (user) {
-                // Check if already friends
-                const isAlreadyFriend = friends.some(f => f.friend.id === user.id);
-                if (isAlreadyFriend) {
-                    setSearchError('You are already friends with this user');
-                    setSearchResult(null);
-                } else {
-                    setSearchResult(user);
-                }
+            const users = await searchUsersByUserName(searchQuery.trim());
+            if (users.length === 0) {
+                setSearchError('No users found with that username');
             } else {
-                setSearchError('No user found with that email address');
+                setSearchResults(users);
             }
         } catch (error) {
             console.error('Search error:', error);
@@ -110,22 +96,29 @@ export default function FriendsScreen() {
         }
     };
 
-    const handleSendRequest = async () => {
-        if (!searchResult) return;
-
-        setSendingRequest(true);
+    const handleSendRequest = async (user: User) => {
+        setSendingRequestTo(user.id);
         try {
-            await sendFriendRequest(searchResult.id);
-            showAlert('Success', `Friend request sent to ${searchResult.name}!`);
-            setSearchResult(null);
-            setSearchEmail('');
+            await sendFriendRequest(user.id);
+            showAlert('Success', `Friend request sent to ${user.name}!`);
+            setSearchResults(searchResults.filter((u) => u.id !== user.id));
         } catch (error: any) {
             console.error('Send request error:', error);
-            const message = error.response?.data || 'Failed to send friend request';
+            const message =
+                typeof error.response?.data === 'string'
+                    ? error.response.data
+                    : 'Failed to send friend request';
             showAlert('Error', message);
         } finally {
-            setSendingRequest(false);
+            setSendingRequestTo(null);
         }
+    };
+
+    const handleViewLibraries = (friend: Friend) => {
+        navigation.navigate('FriendLibrary', {
+            friendId: friend.friend.id,
+            friendName: friend.friend.name,
+        });
     };
 
     const handleAcceptRequest = async (request: FriendRequest) => {
@@ -192,8 +185,16 @@ export default function FriendsScreen() {
             )}
             <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{item.friend.name}</Text>
-                <Text style={styles.friendEmail}>{item.friend.email}</Text>
+                {item.friend.userName && (
+                    <Text style={styles.friendEmail}>@{item.friend.userName}</Text>
+                )}
             </View>
+            <TouchableOpacity
+                style={styles.librariesButton}
+                onPress={() => handleViewLibraries(item)}
+            >
+                <Text style={styles.librariesButtonText}>Libraries</Text>
+            </TouchableOpacity>
             <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => handleRemoveFriend(item)}
@@ -249,20 +250,19 @@ export default function FriendsScreen() {
             <View style={styles.searchSection}>
                 <Text style={styles.searchTitle}>Add a Friend</Text>
                 <Text style={styles.searchSubtitle}>
-                    Search by email address to send a friend request
+                    Search by username to send a friend request
                 </Text>
                 <View style={styles.searchInputContainer}>
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Enter email address..."
+                        placeholder="Enter username..."
                         placeholderTextColor="#999"
-                        value={searchEmail}
+                        value={searchQuery}
                         onChangeText={(text) => {
-                            setSearchEmail(text);
+                            setSearchQuery(text);
                             setSearchError(null);
-                            setSearchResult(null);
+                            setSearchResults([]);
                         }}
-                        keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
                     />
@@ -283,34 +283,46 @@ export default function FriendsScreen() {
                     <Text style={styles.errorText}>{searchError}</Text>
                 )}
 
-                {searchResult && (
-                    <View style={styles.searchResultCard}>
-                        {searchResult.profilePictureUrl ? (
-                            <Image source={{ uri: searchResult.profilePictureUrl }} style={styles.avatar} />
-                        ) : (
-                            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                                <Text style={styles.avatarText}>
-                                    {searchResult.name.charAt(0).toUpperCase()}
-                                </Text>
-                            </View>
-                        )}
-                        <View style={styles.searchResultInfo}>
-                            <Text style={styles.friendName}>{searchResult.name}</Text>
-                            <Text style={styles.friendEmail}>{searchResult.email}</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.sendRequestButton, sendingRequest && styles.disabledButton]}
-                            onPress={handleSendRequest}
-                            disabled={sendingRequest}
-                        >
-                            {sendingRequest ? (
-                                <ActivityIndicator color="#fff" size="small" />
+                {searchResults.map((user) => {
+                    const isAlreadyFriend = friends.some((f) => f.friend.id === user.id);
+                    return (
+                        <View key={user.id} style={styles.searchResultCard}>
+                            {user.profilePictureUrl ? (
+                                <Image source={{ uri: user.profilePictureUrl }} style={styles.avatar} />
                             ) : (
-                                <Text style={styles.sendRequestButtonText}>Add Friend</Text>
+                                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                                    <Text style={styles.avatarText}>
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
                             )}
-                        </TouchableOpacity>
-                    </View>
-                )}
+                            <View style={styles.searchResultInfo}>
+                                <Text style={styles.friendName}>{user.name}</Text>
+                                {user.userName && (
+                                    <Text style={styles.friendEmail}>@{user.userName}</Text>
+                                )}
+                            </View>
+                            {isAlreadyFriend ? (
+                                <Text style={styles.alreadyFriendText}>Friends</Text>
+                            ) : (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.sendRequestButton,
+                                        sendingRequestTo === user.id && styles.disabledButton,
+                                    ]}
+                                    onPress={() => handleSendRequest(user)}
+                                    disabled={sendingRequestTo !== null}
+                                >
+                                    {sendingRequestTo === user.id ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <Text style={styles.sendRequestButtonText}>Add Friend</Text>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    );
+                })}
             </View>
 
             {/* Tabs */}
@@ -352,7 +364,7 @@ export default function FriendsScreen() {
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyText}>No friends yet</Text>
                             <Text style={styles.emptySubtext}>
-                                Search for friends by their email address above
+                                Search for friends by their username above
                             </Text>
                         </View>
                     }
@@ -560,6 +572,24 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         marginTop: 2,
+    },
+    librariesButton: {
+        backgroundColor: '#4A90A4',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+        marginRight: 8,
+    },
+    librariesButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    alreadyFriendText: {
+        color: '#4CAF50',
+        fontSize: 14,
+        fontWeight: '600',
+        paddingHorizontal: 8,
     },
     removeButton: {
         backgroundColor: '#f5f5f5',

@@ -9,6 +9,7 @@ import {
   Friend,
   FriendRequest,
   User,
+  UpdateUserRequest,
   BookPreview,
   ConfirmBooksRequest,
   ConfirmBooksResult,
@@ -39,6 +40,27 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error),
+);
+
+// When the API rejects our token (expired or invalid), clear it and let the
+// app send the user back to the login screen instead of failing every request.
+let onUnauthorized: (() => void) | null = null;
+
+export const setOnUnauthorized = (handler: (() => void) | null): void => {
+  onUnauthorized = handler;
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const isLoginAttempt = error.config?.url?.includes("/auth/google");
+    if (error.response?.status === 401 && !isLoginAttempt) {
+      console.warn("Session expired or invalid; signing out.");
+      await AsyncStorage.removeItem("authToken");
+      onUnauthorized?.();
+    }
+    return Promise.reject(error);
+  },
 );
 
 // Books API
@@ -97,6 +119,14 @@ export const createLibrary = async (library: {
   isPublic: boolean;
 }): Promise<Library> => {
   const response = await api.post("/libraries", library);
+  return response.data;
+};
+
+export const updateLibrary = async (
+  id: number,
+  updates: { name?: string; isPublic?: boolean },
+): Promise<Library> => {
+  const response = await api.patch(`/libraries/${id}`, updates);
   return response.data;
 };
 
@@ -187,6 +217,17 @@ export const createLoan = async (loan: {
   return response.data;
 };
 
+export const requestLoan = async (
+  libraryBookId: number,
+  dueDate?: string,
+): Promise<Loan> => {
+  const response = await api.post("/loans/request", {
+    libraryBookId,
+    dueDate,
+  });
+  return response.data;
+};
+
 export const updateLoanStatus = async (
   id: number,
   status: number,
@@ -218,6 +259,22 @@ export const searchUserByEmail = async (
     }
     throw error;
   }
+};
+
+export const searchUsersByUserName = async (
+  userName: string,
+): Promise<User[]> => {
+  const response = await api.get("/friends/search-by-username", {
+    params: { userName },
+  });
+  return response.data;
+};
+
+export const getFriendLibraries = async (
+  friendId: number,
+): Promise<Library[]> => {
+  const response = await api.get(`/friends/${friendId}/libraries`);
+  return response.data;
 };
 
 export const sendFriendRequest = async (friendId: number): Promise<void> => {
@@ -327,12 +384,14 @@ export interface AuthResponse {
 
 export const loginWithGoogle = async (
   googleAccessToken: string,
+  acceptedTerms: boolean,
 ): Promise<AuthResponse> => {
   console.log("loginWithGoogle: Making request to /auth/google");
   console.log("loginWithGoogle: Token length:", googleAccessToken?.length);
   try {
     const response = await api.post("/auth/google", {
       accessToken: googleAccessToken,
+      acceptedTerms,
     });
     console.log("loginWithGoogle: Response received", response.status);
     // Store the JWT token
@@ -352,6 +411,15 @@ export const loginWithGoogle = async (
 export const getCurrentUser = async (): Promise<AuthResponse["user"]> => {
   const response = await api.get("/auth/me");
   return response.data;
+};
+
+// Beta terms acceptance (remembered on this device)
+export const getTermsAcceptedAt = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem("termsAcceptedAt");
+};
+
+export const setTermsAccepted = async (): Promise<void> => {
+  await AsyncStorage.setItem("termsAcceptedAt", new Date().toISOString());
 };
 
 export const setAuthToken = async (token: string): Promise<void> => {

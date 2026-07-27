@@ -28,3 +28,9 @@ public class UpdateLoanStatusRequest
 {
     public LoanStatus Status { get; set; }
 }
+
+public class RequestLoanRequest
+{
+    public int LibraryBookId { get; set; }
+    public DateTime? DueDate { get; set; }
+}

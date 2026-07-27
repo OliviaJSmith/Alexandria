@@ -346,8 +346,8 @@ export default function BookSearchScreen({ navigation }: any) {
                   styles.saveButton,
                   !selectedLibrary && styles.saveButtonDisabled
                 ]} 
-                onPress={confirmAddToLibrary}
-                disabled={!selectedLibrary || addingToLibrary}
+               onPress={() => confirmAddToLibrary()} 
+               disabled={!selectedLibrary || addingToLibrary}
               >
                 <Text style={styles.saveButtonText}>Save to Library</Text>
               </TouchableOpacity>

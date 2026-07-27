@@ -53,6 +53,22 @@ public class LibrariesController(
         return CreatedAtAction(nameof(GetLibrary), new { id = library.Id }, library);
     }
 
+    [HttpPatch("{id}")]
+    public async Task<ActionResult<LibraryDto>> UpdateLibrary(int id, UpdateLibraryRequest request)
+    {
+        var userId = GetCurrentUserId();
+
+        if (!await libraryService.UserOwnsLibraryAsync(id, userId))
+            return Forbid();
+
+        var library = await libraryService.UpdateLibraryAsync(id, userId, request);
+
+        if (library is null)
+            return NotFound();
+
+        return Ok(library);
+    }
+
     [HttpGet("{id}/books")]
     public async Task<ActionResult<IEnumerable<LibraryBookDto>>> GetLibraryBooks(int id)
     {

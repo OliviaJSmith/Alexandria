@@ -322,4 +322,137 @@ public class LoanServiceTests : ServiceTestBase
         // Assert
         Assert.False(result);
     }
+
+    private async Task SeedFriendshipAsync(int requesterId, int addresseeId, FriendshipStatus status = FriendshipStatus.Accepted)
+    {
+        Context.Friendships.Add(new Friendship
+        {
+            RequesterId = requesterId,
+            AddresseeId = addresseeId,
+            Status = status,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await Context.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task RequestLoanAsync_CreatesPendingLoanAndKeepsBookAvailable()
+    {
+        // Arrange
+        var lender = await SeedUserAsync(1);
+        var borrower = await SeedUserAsync(2);
+        await SeedFriendshipAsync(borrower.Id, lender.Id);
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(lender.Id);
+        var libraryBook = await SeedLibraryBookAsync(library.Id, 1, BookStatus.Available);
+
+        // Act
+        var result = await _sut.RequestLoanAsync(borrower.Id, new RequestLoanRequest { LibraryBookId = libraryBook.Id });
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(LoanStatus.Pending, result.Data!.Status);
+        Assert.Equal(lender.Id, result.Data.LenderId);
+        Assert.Equal(borrower.Id, result.Data.BorrowerId);
+
+        // Book stays available until the lender approves
+        var updatedLibraryBook = await Context.LibraryBooks.FindAsync(libraryBook.Id);
+        Assert.Equal(BookStatus.Available, updatedLibraryBook!.Status);
+    }
+
+    [Fact]
+    public async Task RequestLoanAsync_WithoutFriendship_ReturnsError()
+    {
+        // Arrange
+        var lender = await SeedUserAsync(1);
+        var borrower = await SeedUserAsync(2);
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(lender.Id);
+        var libraryBook = await SeedLibraryBookAsync(library.Id, 1, BookStatus.Available);
+
+        // Act
+        var result = await _sut.RequestLoanAsync(borrower.Id, new RequestLoanRequest { LibraryBookId = libraryBook.Id });
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("You can only request books from friends", result.Error);
+    }
+
+    [Fact]
+    public async Task RequestLoanAsync_OwnBook_ReturnsError()
+    {
+        // Arrange
+        var lender = await SeedUserAsync(1);
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(lender.Id);
+        var libraryBook = await SeedLibraryBookAsync(library.Id, 1, BookStatus.Available);
+
+        // Act
+        var result = await _sut.RequestLoanAsync(lender.Id, new RequestLoanRequest { LibraryBookId = libraryBook.Id });
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("You cannot borrow your own book", result.Error);
+    }
+
+    [Fact]
+    public async Task RequestLoanAsync_DuplicateOpenRequest_ReturnsError()
+    {
+        // Arrange
+        var lender = await SeedUserAsync(1);
+        var borrower = await SeedUserAsync(2);
+        await SeedFriendshipAsync(borrower.Id, lender.Id);
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(lender.Id);
+        var libraryBook = await SeedLibraryBookAsync(library.Id, 1, BookStatus.Available);
+        await _sut.RequestLoanAsync(borrower.Id, new RequestLoanRequest { LibraryBookId = libraryBook.Id });
+
+        // Act
+        var result = await _sut.RequestLoanAsync(borrower.Id, new RequestLoanRequest { LibraryBookId = libraryBook.Id });
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("You already have an open request for this book", result.Error);
+    }
+
+    [Fact]
+    public async Task UpdateLoanStatusAsync_LenderApprovesPendingRequest_ChecksOutBook()
+    {
+        // Arrange
+        var lender = await SeedUserAsync(1);
+        var borrower = await SeedUserAsync(2);
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(lender.Id);
+        var libraryBook = await SeedLibraryBookAsync(library.Id, 1, BookStatus.Available);
+        var loan = await SeedLoanAsync(lender.Id, borrower.Id, libraryBook.Id, LoanStatus.Pending);
+
+        // Act
+        var result = await _sut.UpdateLoanStatusAsync(loan.Id, lender.Id, new UpdateLoanStatusRequest { Status = LoanStatus.Active });
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(LoanStatus.Active, result.Data!.Status);
+        var updatedLibraryBook = await Context.LibraryBooks.FindAsync(libraryBook.Id);
+        Assert.Equal(BookStatus.CheckedOut, updatedLibraryBook!.Status);
+    }
+
+    [Fact]
+    public async Task UpdateLoanStatusAsync_BorrowerCannotApproveOwnRequest()
+    {
+        // Arrange
+        var lender = await SeedUserAsync(1);
+        var borrower = await SeedUserAsync(2);
+        await SeedBooksAsync();
+        var library = await SeedLibraryAsync(lender.Id);
+        var libraryBook = await SeedLibraryBookAsync(library.Id, 1, BookStatus.Available);
+        var loan = await SeedLoanAsync(lender.Id, borrower.Id, libraryBook.Id, LoanStatus.Pending);
+
+        // Act
+        var result = await _sut.UpdateLoanStatusAsync(loan.Id, borrower.Id, new UpdateLoanStatusRequest { Status = LoanStatus.Active });
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Only the lender can approve a borrow request", result.Error);
+    }
 }

@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { getLoans, getLentOutBooks } from '../services/api';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { getLoans, getLentOutBooks, getCurrentUser, updateLoanStatus } from '../services/api';
 import { Loan, LoanStatus, LibraryBook, BookStatus } from '../types';
 
 export default function LoansScreen() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [lentBooks, setLentBooks] = useState<LibraryBook[]>([]);
   const [filter, setFilter] = useState<'all' | 'borrowed' | 'lent'>('all');
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then((user) => setCurrentUserId(user.id))
+      .catch((error) => console.error('Load current user error:', error));
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -53,16 +61,113 @@ export default function LoansScreen() {
     return colorMap[status] || '#000';
   };
 
+  const showAlert = (title: string, message: string) => {
+    if (typeof window !== 'undefined' && window.alert) {
+      window.alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const handleUpdateStatus = async (loan: Loan, status: LoanStatus, successMessage: string) => {
+    setUpdatingId(loan.id);
+    try {
+      await updateLoanStatus(loan.id, status);
+      showAlert('Done', successMessage);
+      loadData();
+    } catch (error: any) {
+      console.error('Update loan status error:', error);
+      const message =
+        typeof error.response?.data === 'string'
+          ? error.response.data
+          : 'Failed to update loan';
+      showAlert('Error', message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const renderLoanActions = (item: Loan) => {
+    if (currentUserId === null) return null;
+
+    const isLender = item.lenderId === currentUserId;
+    const isBorrower = item.borrowerId === currentUserId;
+    const busy = updatingId !== null;
+
+    if (updatingId === item.id) {
+      return <ActivityIndicator color="#E5A823" size="small" style={styles.actionsRow} />;
+    }
+
+    if (item.status === LoanStatus.Pending && isLender) {
+      return (
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={styles.approveButton}
+            disabled={busy}
+            onPress={() =>
+              handleUpdateStatus(item, LoanStatus.Active, `Loan approved for ${item.borrowerName}`)
+            }
+          >
+            <Text style={styles.actionButtonText}>Approve</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.declineButton}
+            disabled={busy}
+            onPress={() =>
+              handleUpdateStatus(item, LoanStatus.Cancelled, 'Borrow request declined')
+            }
+          >
+            <Text style={styles.declineButtonText}>Decline</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (item.status === LoanStatus.Pending && isBorrower) {
+      return (
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={styles.declineButton}
+            disabled={busy}
+            onPress={() =>
+              handleUpdateStatus(item, LoanStatus.Cancelled, 'Borrow request cancelled')
+            }
+          >
+            <Text style={styles.declineButtonText}>Cancel Request</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (item.status === LoanStatus.Active) {
+      return (
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={styles.approveButton}
+            disabled={busy}
+            onPress={() =>
+              handleUpdateStatus(item, LoanStatus.Returned, 'Book marked as returned')
+            }
+          >
+            <Text style={styles.actionButtonText}>Mark Returned</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   const renderLoan = ({ item }: { item: Loan }) => (
     <View style={styles.loanCard}>
       <Text style={styles.bookTitle}>{item.book.title}</Text>
       {item.book.author && <Text style={styles.bookAuthor}>{item.book.author}</Text>}
-      
+
       <View style={styles.loanInfo}>
         <Text style={styles.infoText}>Lender: {item.lenderName}</Text>
         <Text style={styles.infoText}>Borrower: {item.borrowerName}</Text>
         <Text style={styles.infoText}>
-          Loan Date: {new Date(item.loanDate).toLocaleDateString()}
+          {item.status === LoanStatus.Pending ? 'Requested' : 'Loan Date'}: {new Date(item.loanDate).toLocaleDateString()}
         </Text>
         {item.dueDate && (
           <Text style={styles.infoText}>
@@ -70,10 +175,12 @@ export default function LoansScreen() {
           </Text>
         )}
       </View>
-      
+
       <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
         <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
       </View>
+
+      {renderLoanActions(item)}
     </View>
   );
 
@@ -251,6 +358,35 @@ const styles = StyleSheet.create({
   statusText: {
     color: 'white',
     fontSize: 12,
+    fontWeight: '500',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 8,
+  },
+  approveButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  declineButton: {
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  declineButtonText: {
+    color: '#B0B0B0',
+    fontSize: 14,
     fontWeight: '500',
   },
   emptyText: {
