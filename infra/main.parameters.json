@@ -1,19 +1,15 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-    "contentVersion": "1.0.0.0",
-    "parameters": {
-      "principalId": {
-        "value": "${AZURE_PRINCIPAL_ID}"
-      },
-      "postgres_password": {
-        "value": "${AZURE_POSTGRES_PASSWORD}"
-      },
-      "environmentName": {
-        "value": "${AZURE_ENV_NAME}"
-      },
-      "location": {
-        "value": "${AZURE_LOCATION}"
-      }
-    }
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "resourceGroupName": { "value": "${AZURE_RESOURCE_GROUP=alexandria-rg}" },
+    "principalId": { "value": "${AZURE_PRINCIPAL_ID}" },
+    "postgresAdminPassword": { "value": "${POSTGRES_ADMIN_PASSWORD}" },
+    "jwtSigningKey": { "value": "${JWT_SIGNING_KEY}" },
+    "googleClientId": { "value": "${GOOGLE_CLIENT_ID}" },
+    "openAiModelName": { "value": "${OPENAI_MODEL_NAME=gpt-4o-mini}" },
+    "openAiModelVersion": { "value": "${OPENAI_MODEL_VERSION=2024-07-18}" }
   }
-  
+}

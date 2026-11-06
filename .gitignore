@@ -30,8 +30,8 @@ bld/
 [Bb]in/
 [Oo]bj/
 
-# Entity Framework Core Migrations
-**/Migrations/*
+# Test results and coverage
+[Tt]est[Rr]esults/
 
 # Node.js
 node_modules/
@@ -82,7 +82,6 @@ $RECYCLE.BIN/
 .env
 .env.local
 .env.production
-appsettings.Development.json
 appsettings.Production.json
 appsettings.Local.json
 

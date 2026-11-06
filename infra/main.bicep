@@ -2,50 +2,73 @@ targetScope = 'subscription'
 
 @minLength(1)
 @maxLength(64)
-@description('Name of the environment that can be used as part of naming resource convention, the name of the resource group for your application will use this name, prefixed with rg-')
+@description('azd environment name, used to derive unique resource names.')
 param environmentName string
 
 @minLength(1)
-@description('The location used for all deployed resources')
+@description('Primary Azure region for all resources.')
 param location string
 
-@description('Id of the user or app to assign application roles')
+@description('Region for the Static Web App, which supports fewer regions than the other resources.')
+param staticWebAppLocation string = 'westus2'
+
+@description('Name of the resource group to create.')
+param resourceGroupName string = 'alexandria-rg'
+
+@description('Object ID of the developer running azd; granted data-plane roles so local development can reach Azure OpenAI and Vision.')
 param principalId string = ''
 
-@metadata({azd: {
-  type: 'generate'
-  config: {length:22}
-  }
-})
+@description('PostgreSQL administrator login.')
+param postgresAdminLogin string = 'alexandriaadmin'
+
 @secure()
-param postgres_password string
+@description('PostgreSQL administrator password. Supplied from the azd environment; never committed.')
+param postgresAdminPassword string
 
-var tags = {
-  'azd-env-name': environmentName
-}
+@secure()
+@description('Symmetric key used to sign the API\'s JWTs. Supplied from the azd environment; never committed.')
+param jwtSigningKey string
 
-resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
-  name: 'rg-${environmentName}'
+@description('Google OAuth web client ID used to validate Google sign-ins.')
+param googleClientId string
+
+@description('Azure OpenAI model to deploy for turning scanned text into book data.')
+param openAiModelName string
+
+@description('Version of the Azure OpenAI model to deploy.')
+param openAiModelVersion string
+
+var tags = { 'azd-env-name': environmentName }
+
+resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
+  name: resourceGroupName
   location: location
   tags: tags
 }
+
 module resources 'resources.bicep' = {
-  scope: rg
   name: 'resources'
+  scope: rg
   params: {
+    environmentName: environmentName
     location: location
+    staticWebAppLocation: staticWebAppLocation
     tags: tags
     principalId: principalId
+    postgresAdminLogin: postgresAdminLogin
+    postgresAdminPassword: postgresAdminPassword
+    jwtSigningKey: jwtSigningKey
+    googleClientId: googleClientId
+    openAiModelName: openAiModelName
+    openAiModelVersion: openAiModelVersion
   }
 }
 
-
-output MANAGED_IDENTITY_CLIENT_ID string = resources.outputs.MANAGED_IDENTITY_CLIENT_ID
-output MANAGED_IDENTITY_NAME string = resources.outputs.MANAGED_IDENTITY_NAME
-output AZURE_LOG_ANALYTICS_WORKSPACE_NAME string = resources.outputs.AZURE_LOG_ANALYTICS_WORKSPACE_NAME
-output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT
-output AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID string = resources.outputs.AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID
-output AZURE_CONTAINER_REGISTRY_NAME string = resources.outputs.AZURE_CONTAINER_REGISTRY_NAME
-output AZURE_CONTAINER_APPS_ENVIRONMENT_NAME string = resources.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_NAME
-output AZURE_CONTAINER_APPS_ENVIRONMENT_ID string = resources.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_ID
-output AZURE_CONTAINER_APPS_ENVIRONMENT_DEFAULT_DOMAIN string = resources.outputs.AZURE_CONTAINER_APPS_ENVIRONMENT_DEFAULT_DOMAIN
+output AZURE_RESOURCE_GROUP string = rg.name
+output AZURE_KEY_VAULT_NAME string = resources.outputs.keyVaultName
+output AZURE_OPENAI_ENDPOINT string = resources.outputs.openAiEndpoint
+output AZURE_OPENAI_DEPLOYMENT string = resources.outputs.openAiDeploymentName
+output AZURE_VISION_ENDPOINT string = resources.outputs.visionEndpoint
+output API_URL string = resources.outputs.apiUrl
+output WEB_URL string = resources.outputs.webUrl
+output POSTGRES_HOST string = resources.outputs.postgresHost

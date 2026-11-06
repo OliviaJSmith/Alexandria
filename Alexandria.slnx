@@ -1,14 +1,8 @@
 <Solution>
-  <Folder Name="/Solution Items/">
-    <File Path="API.md" />
-    <File Path="CONFIGURATION.md" />
-    <File Path="DEPLOYMENT.md" />
-    <File Path="README.md" />
-    <File Path="SUMMARY.md" />
-  </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Alexandria.API/Alexandria.API.csproj" />
-    <Project Path="src/Alexandria.API.Tests/Alexandria.API.Tests.csproj" />
-    <Project Path="src/Alexandria.AppHost/Alexandria.AppHost.csproj" />
+    <Project Path="src/Alexandria.Api/Alexandria.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Alexandria.Api.Tests/Alexandria.Api.Tests.csproj" />
   </Folder>
 </Solution>

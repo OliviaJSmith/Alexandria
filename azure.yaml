@@ -1,8 +1,12 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
-
 name: alexandria
-services:  
-  app:
+services:
+  api:
+    project: ./src/Alexandria.Api
     language: dotnet
-    project: ./src/Alexandria.AppHost/Alexandria.AppHost.csproj
-    host: containerapp
+    host: appservice
+  web:
+    project: ./src/Alexandria.App
+    language: js
+    host: staticwebapp
+    dist: dist

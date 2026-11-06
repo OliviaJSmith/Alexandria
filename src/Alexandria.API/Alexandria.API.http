@@ -1,7 +1,0 @@
-@Alexandria.API_HostAddress = https://localhost:7232
-
-
-GET {{Alexandria.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
