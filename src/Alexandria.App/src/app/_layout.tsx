@@ -31,6 +31,8 @@ function RootStack() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Libraries' }} />
         <Stack.Screen name="library/[libraryId]/index" options={{ title: 'Library' }} />
         <Stack.Screen name="library/[libraryId]/add-book" options={{ title: 'Add a book' }} />
+        <Stack.Screen name="library/[libraryId]/scan" options={{ title: 'Scan books' }} />
+        <Stack.Screen name="friend/[friendId]" options={{ title: 'Friend' }} />
         <Stack.Screen name="library/[libraryId]/copy/[copyId]" options={{ title: 'Book' }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>

@@ -2,6 +2,7 @@ import { Image, Text, View } from 'react-native';
 import { useAuth, useSignedIn } from '../../auth/AuthProvider';
 import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
+import { UserNameForm } from '../../components/UserNameForm';
 import { cards } from '../../styles/cards';
 import { layout } from '../../styles/layout';
 import { text } from '../../styles/typography';
@@ -27,6 +28,8 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
+
+      <UserNameForm />
 
       <View style={cards.card}>
         <Text style={text.label}>Beta</Text>

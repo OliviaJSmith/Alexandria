@@ -14,8 +14,11 @@ export class ApiError extends Error {
 export type ApiClient = {
   get<T>(path: string): Promise<T>;
   post<T>(path: string, body?: unknown): Promise<T>;
+  put<T>(path: string, body: unknown): Promise<T>;
   patch<T>(path: string, body: unknown): Promise<T>;
   delete(path: string): Promise<void>;
+  /** multipart/form-data upload; the browser/runtime sets the boundary header. */
+  postForm<T>(path: string, form: FormData): Promise<T>;
 };
 
 type ProblemDetails = {
@@ -31,8 +34,9 @@ type ProblemDetails = {
 export function createApiClient(getToken: () => string | null, onUnauthorized: () => void): ApiClient {
   async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const token = getToken();
+    const isForm = body instanceof FormData;
     const headers: Record<string, string> = { Accept: 'application/json' };
-    if (body !== undefined) {
+    if (body !== undefined && !isForm) {
       headers['Content-Type'] = 'application/json';
     }
     if (token) {
@@ -44,7 +48,7 @@ export function createApiClient(getToken: () => string | null, onUnauthorized: (
       response = await fetch(`${config.apiUrl}${path}`, {
         method,
         headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       });
     } catch {
       throw new ApiError(0, 'Could not reach Alexandria. Check your connection and try again.');
@@ -69,8 +73,10 @@ export function createApiClient(getToken: () => string | null, onUnauthorized: (
   return {
     get: (path) => request('GET', path),
     post: (path, body) => request('POST', path, body),
+    put: (path, body) => request('PUT', path, body),
     patch: (path, body) => request('PATCH', path, body),
     delete: (path) => request('DELETE', path),
+    postForm: (path, form) => request('POST', path, form),
   };
 }
 

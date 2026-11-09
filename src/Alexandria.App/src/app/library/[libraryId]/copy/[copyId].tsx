@@ -9,6 +9,7 @@ import { BookDetails } from '../../../../components/BookDetails';
 import { Button } from '../../../../components/Button';
 import { ChipGroup } from '../../../../components/ChipGroup';
 import { ConfirmButton } from '../../../../components/ConfirmButton';
+import { LendCard } from '../../../../components/LendCard';
 import { LoadingView } from '../../../../components/LoadingView';
 import { Screen } from '../../../../components/Screen';
 import { TextField } from '../../../../components/TextField';
@@ -23,8 +24,18 @@ export default function CopyScreen() {
   const { libraryId, copyId } = useLocalSearchParams<{ libraryId: string; copyId: string }>();
   const { api } = useSignedIn();
   const load = useCallback(async () => {
-    const [copies, libraries] = await Promise.all([api.getLibraryBooks(libraryId), api.getMyLibraries()]);
-    return { copy: copies.find((c) => c.id === copyId) ?? null, libraries };
+    const [copies, libraries, activeLoans, friends] = await Promise.all([
+      api.getLibraryBooks(libraryId),
+      api.getMyLibraries(),
+      api.getLoans('Lender', 'Active'),
+      api.getFriends(),
+    ]);
+    return {
+      copy: copies.find((c) => c.id === copyId) ?? null,
+      libraries,
+      activeLoan: activeLoans.find((l) => l.libraryBookId === copyId) ?? null,
+      friends,
+    };
   }, [api, libraryId, copyId]);
   const query = useFocusQuery(load);
 
@@ -74,6 +85,13 @@ export default function CopyScreen() {
       <Stack.Screen options={{ title: copy.book.title }} />
       <BookDetails book={copy.book} />
       {error ? <Banner message={error} /> : null}
+
+      <LendCard
+        copy={copy}
+        activeLoan={query.data?.activeLoan ?? null}
+        friends={query.data?.friends ?? []}
+        onChanged={query.reload}
+      />
 
       <View style={cards.card}>
         <Text style={text.label}>Status</Text>

@@ -5,6 +5,7 @@ import { errorMessage } from '../../../api/client';
 import type { Library } from '../../../api/types';
 import { useSignedIn } from '../../../auth/AuthProvider';
 import { Banner } from '../../../components/Banner';
+import { BorrowButton } from '../../../components/BorrowButton';
 import { Button } from '../../../components/Button';
 import { EmptyState } from '../../../components/EmptyState';
 import { LibraryBookItem } from '../../../components/LibraryBookItem';
@@ -28,6 +29,7 @@ export default function LibraryScreen() {
     [api, libraryId],
   );
   const query = useFocusQuery(load);
+  const [borrowError, setBorrowError] = useState<string | null>(null);
 
   if (query.loading) {
     return <LoadingView message="Opening library…" />;
@@ -48,6 +50,7 @@ export default function LibraryScreen() {
     <Screen onRefresh={query.reload} refreshing={query.refreshing}>
       <Stack.Screen options={{ title: library.name }} />
       {query.error ? <Banner message={query.error} /> : null}
+      {borrowError ? <Banner message={borrowError} /> : null}
 
       {isOwner ? <LibrarySettings library={library} onSaved={query.reload} /> : <Text style={text.title}>{library.name}</Text>}
 
@@ -56,10 +59,18 @@ export default function LibraryScreen() {
           {copies.length} {copies.length === 1 ? 'book' : 'books'}
         </Text>
         {isOwner ? (
-          <Button
-            label="Add a book"
-            onPress={() => router.push({ pathname: '/library/[libraryId]/add-book', params: { libraryId: library.id } })}
-          />
+          <View style={layout.row}>
+            <Button
+              label="Scan"
+              variant="secondary"
+              onPress={() => router.push({ pathname: '/library/[libraryId]/scan', params: { libraryId: library.id } })}
+              accessibilityHint="Add books from a photo of a cover or shelf"
+            />
+            <Button
+              label="Add a book"
+              onPress={() => router.push({ pathname: '/library/[libraryId]/add-book', params: { libraryId: library.id } })}
+            />
+          </View>
         ) : null}
       </View>
 
@@ -84,6 +95,7 @@ export default function LibraryScreen() {
                     })
                 : undefined
             }
+            trailing={isOwner ? undefined : <BorrowButton copy={copy} onError={setBorrowError} />}
           />
         ))}
       </View>

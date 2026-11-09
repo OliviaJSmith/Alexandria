@@ -59,4 +59,20 @@ export const cards = StyleSheet.create({
   coverInitialLarge: {
     fontSize: 44,
   },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  sectionTitle: {
+    marginTop: spacing.sm,
+  },
 });

@@ -15,6 +15,8 @@ type AuthContextValue = {
   /** Exchanges a Google access token for an Alexandria session (the caller has confirmed the beta terms). */
   signIn: (googleAccessToken: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Replaces the cached profile, e.g. after a username change. */
+  updateUser: (user: User) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -83,7 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => endSession(), [endSession]);
 
-  const value = useMemo(() => ({ state, api, signIn, signOut }), [state, api, signIn, signOut]);
+  const updateUser = useCallback(
+    async (user: User) => {
+      if (state.status === 'signedIn') {
+        await startSession({ ...state.session, user });
+      }
+    },
+    [state, startSession],
+  );
+
+  const value = useMemo(() => ({ state, api, signIn, signOut, updateUser }), [state, api, signIn, signOut, updateUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

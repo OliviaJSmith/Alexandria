@@ -64,6 +64,67 @@ export type UpdateLibraryRequest = {
   isPublic?: boolean;
 };
 
+/** Another user's public profile (no email). */
+export type UserSummary = {
+  id: string;
+  userName: string;
+  displayName: string;
+  profilePictureUrl: string | null;
+};
+
+export type FriendshipStatus = 'Pending' | 'Accepted' | 'Rejected' | 'Blocked';
+
+export type Friendship = {
+  friendshipId: string;
+  user: UserSummary;
+  status: FriendshipStatus;
+  /** True when the other user sent the request. */
+  isIncoming: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FriendRequests = { incoming: Friendship[]; outgoing: Friendship[] };
+
+export type UserRelationship = 'None' | 'Friends' | 'RequestSent' | 'RequestReceived';
+
+export type UserSearchResult = { user: UserSummary; relationship: UserRelationship; friendshipId: string | null };
+
+export type UserNameAvailability = { userName: string; isValid: boolean; isAvailable: boolean };
+
+export type LoanStatus = 'Pending' | 'Active' | 'Returned' | 'Overdue' | 'Cancelled';
+
+export type Loan = {
+  id: string;
+  libraryBookId: string;
+  libraryId: string;
+  libraryName: string;
+  book: Book;
+  lender: UserSummary;
+  borrower: UserSummary;
+  status: LoanStatus;
+  isOverdue: boolean;
+  requestedAt: string;
+  loanDate: string | null;
+  dueDate: string | null;
+  returnedDate: string | null;
+};
+
+export type ScanMode = 'Single' | 'Shelf';
+
+export type ScannedBook = {
+  detectedTitle: string;
+  detectedAuthor: string | null;
+  detectedIsbn: string | null;
+  /** Best catalog match; its id is null when it isn't in Alexandria yet. */
+  match: Book | null;
+};
+
+export type ScanResult = { books: ScannedBook[]; message: string | null };
+
+/** A photo to upload: a browser File on web, or a local file URI on native. */
+export type PhotoUpload = { uri: string; file?: File; mimeType?: string; fileName?: string | null };
+
 export type UpdateLibraryBookRequest = {
   status?: LibraryBookStatus;
   loanNote?: string;
