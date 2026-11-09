@@ -34,6 +34,20 @@ public class IsbnTests
     }
 
     [Fact]
+    public void ExtractFromText_FindsDistinctValidIsbnsInFreeText()
+    {
+        var text = "THE HOBBIT\nISBN 978-0-547-92822-7 $14.99\nalso 054792822X and 9780306406157\nbarcode 9780547928228 phone 555 123 4567";
+
+        Assert.Equal(["9780547928227", "9780306406157"], Isbn.ExtractFromText(text));
+    }
+
+    [Fact]
+    public void ExtractFromText_NoIsbn_ReturnsEmpty()
+    {
+        Assert.Empty(Isbn.ExtractFromText("Pride and Prejudice, Penguin Classics"));
+    }
+
+    [Fact]
     public void Clean_KeepsDigitsAndUppercasesX()
     {
         Assert.Equal("080442957X", Isbn.Clean("isbn: 0-8044-2957-x"));

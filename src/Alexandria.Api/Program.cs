@@ -4,6 +4,7 @@ using Alexandria.Api.Repositories;
 using System.Text.Json.Serialization;
 using Alexandria.Api.Services;
 using Alexandria.Api.Services.BookCatalog;
+using Alexandria.Api.Services.Scanning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -34,6 +35,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ILibraryRepository, LibraryRepository>();
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
+builder.Services.AddScoped<ILoanRepository, LoanRepository>();
 
 // ---------- Services ----------
 
@@ -45,6 +47,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddScoped<ILoanService, LoanService>();
 builder.Services.AddHttpClient<IGoogleTokenValidator, GoogleTokenValidator>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
 // External book catalogs, queried in registration order: Open Library first, Google Books as fallback.
@@ -58,6 +62,13 @@ builder.Services.AddHttpClient<GoogleBooksCatalogSource>(client => client.Timeou
 builder.Services.AddTransient<IBookCatalogSource>(sp => sp.GetRequiredService<OpenLibraryCatalogSource>());
 builder.Services.AddTransient<IBookCatalogSource>(sp => sp.GetRequiredService<GoogleBooksCatalogSource>());
 builder.Services.AddScoped<IBookLookupService, BookLookupService>();
+
+// Book scanning: Azure Vision reads the photo, Azure OpenAI names the books. Off when not configured.
+builder.Services.Configure<AzureVisionOptions>(builder.Configuration.GetSection(AzureVisionOptions.SectionName));
+builder.Services.Configure<AzureOpenAIOptions>(builder.Configuration.GetSection(AzureOpenAIOptions.SectionName));
+builder.Services.AddHttpClient<ITextRecognizer, AzureVisionTextRecognizer>(client => client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient<IBookTextInterpreter, AzureOpenAIBookTextInterpreter>(client => client.Timeout = TimeSpan.FromSeconds(90));
+builder.Services.AddScoped<IBookScanService, BookScanService>();
 
 // ---------- Authentication ----------
 

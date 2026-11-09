@@ -1,10 +1,30 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Alexandria.Api.Services;
 
 /// <summary>ISBN validation and normalization. Alexandria stores every ISBN as ISBN-13 without hyphens.</summary>
-public static class Isbn
+public static partial class Isbn
 {
+    /// <summary>Valid ISBNs found anywhere in free text (e.g. text read from a book cover), as distinct ISBN-13s.</summary>
+    public static IReadOnlyList<string> ExtractFromText(string text)
+    {
+        var found = new List<string>();
+        foreach (Match match in IsbnLikePattern().Matches(text))
+        {
+            if (TryNormalize(match.Value, out var isbn13) && !found.Contains(isbn13))
+            {
+                found.Add(isbn13);
+            }
+        }
+
+        return found;
+    }
+
+    // 10 or 13 digits (last may be X for ISBN-10), optionally separated by single hyphens or spaces.
+    [GeneratedRegex(@"(?<![\dXx])(?:\d[-\s]?){9,12}[\dXx](?![\dXx])")]
+    private static partial Regex IsbnLikePattern();
+
     /// <summary>Normalizes an ISBN-10 or ISBN-13 (hyphens and spaces allowed) to ISBN-13; false if it is not a valid ISBN.</summary>
     public static bool TryNormalize(string? input, out string isbn13)
     {

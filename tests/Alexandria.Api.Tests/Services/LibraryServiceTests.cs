@@ -11,6 +11,7 @@ public class LibraryServiceTests
     private readonly Mock<ILibraryRepository> _libraries = new();
     private readonly Mock<IBookRepository> _books = new();
     private readonly Mock<IFriendshipRepository> _friendships = new();
+    private readonly Mock<ILoanRepository> _loans = new();
     private readonly LibraryService _service;
 
     private readonly Guid _ownerId = Guid.NewGuid();
@@ -23,7 +24,7 @@ public class LibraryServiceTests
             .ReturnsAsync(false);
         _friendships.Setup(f => f.AreFriendsAsync(_ownerId, _friendId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _service = new LibraryService(_libraries.Object, _books.Object, _friendships.Object, TestData.TimeProviderAt(TestData.Now).Object);
+        _service = new LibraryService(_libraries.Object, _books.Object, _friendships.Object, _loans.Object, TestData.TimeProviderAt(TestData.Now).Object);
     }
 
     // ---------- Visibility ----------
@@ -283,6 +284,30 @@ public class LibraryServiceTests
         Assert.Equal("Classics", copy.Book!.Genre);
         Assert.Equal(TestData.Now, copy.Book.UpdatedAt);
         _libraries.Verify(l => l.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateLibraryBook_StatusChangeDuringActiveLoan_ReturnsConflict()
+    {
+        var (library, copy) = SetupCopy(status: LibraryBookStatus.CheckedOut);
+        _loans.Setup(l => l.HasActiveLoanAsync(copy.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await _service.UpdateLibraryBookAsync(library.Id, copy.Id, _ownerId, new UpdateLibraryBookRequest { Status = LibraryBookStatus.Available });
+
+        Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
+        Assert.Equal(LibraryService.OnActiveLoanMessage, result.Error.Message);
+        Assert.Equal(LibraryBookStatus.CheckedOut, copy.Status);
+    }
+
+    [Fact]
+    public async Task UpdateLibraryBook_SameStatus_DoesNotCheckLoans()
+    {
+        var (library, copy) = SetupCopy();
+
+        var result = await _service.UpdateLibraryBookAsync(library.Id, copy.Id, _ownerId, new UpdateLibraryBookRequest { Status = LibraryBookStatus.Available });
+
+        Assert.True(result.IsSuccess);
+        _loans.VerifyNoOtherCalls();
     }
 
     [Fact]

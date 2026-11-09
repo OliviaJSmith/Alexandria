@@ -1,5 +1,6 @@
 using Alexandria.Api.Dtos;
 using Alexandria.Api.Services;
+using Alexandria.Api.Services.Scanning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,8 +10,29 @@ namespace Alexandria.Api.Controllers;
 [Route("api/books")]
 [Authorize]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-public class BooksController(IBookService bookService) : ApiControllerBase
+public class BooksController(IBookService bookService, IBookScanService scanService) : ApiControllerBase
 {
+    /// <summary>
+    /// Identifies books in a photo (multipart field "image"): mode Single for one cover, Shelf for a row of spines.
+    /// Returns detected books with their best catalog match; nothing is saved.
+    /// </summary>
+    [HttpPost("scan")]
+    [RequestSizeLimit(BookScanService.MaxImageBytes + 1024 * 1024)]
+    [ProducesResponseType<ScanResultDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<ScanResultDto>> Scan(IFormFile image, [FromQuery] ScanMode mode = ScanMode.Single, CancellationToken cancellationToken = default)
+    {
+        if (image is null || image.Length == 0 || image.Length > BookScanService.MaxImageBytes)
+        {
+            return Problem(detail: BookScanService.InvalidImageMessage, statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        using var buffer = new MemoryStream((int)image.Length);
+        await image.CopyToAsync(buffer, cancellationToken);
+        return ToActionResult(await scanService.ScanAsync(buffer.ToArray(), mode, cancellationToken));
+    }
+
     /// <summary>
     /// Searches Alexandria's catalog, falling back to Open Library and Google Books when nothing matches.
     /// External results have a null id; create them with POST /api/books before adding them to a library.

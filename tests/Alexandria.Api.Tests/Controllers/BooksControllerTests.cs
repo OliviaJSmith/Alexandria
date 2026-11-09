@@ -1,6 +1,7 @@
 using Alexandria.Api.Controllers;
 using Alexandria.Api.Dtos;
 using Alexandria.Api.Services;
+using Alexandria.Api.Services.Scanning;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -10,12 +11,13 @@ namespace Alexandria.Api.Tests.Controllers;
 public class BooksControllerTests
 {
     private readonly Mock<IBookService> _service = new();
+    private readonly Mock<IBookScanService> _scan = new();
     private readonly BooksController _controller;
     private readonly BookDto _book = BookDto.FromBook(TestData.Book());
 
     public BooksControllerTests()
     {
-        _controller = new BooksController(_service.Object).WithContext();
+        _controller = new BooksController(_service.Object, _scan.Object).WithContext();
     }
 
     [Fact]
@@ -90,6 +92,41 @@ public class BooksControllerTests
 
         Assert.Same(_book, Assert.IsType<OkObjectResult>(result.Result).Value);
     }
+
+    [Fact]
+    public async Task Scan_PassesImageBytesAndMode_ReturnsOk()
+    {
+        var bytes = new byte[] { 0xFF, 0xD8, 0xFF, 0x01 };
+        var scanResult = new ScanResultDto([new ScannedBookDto("Dune", "Frank Herbert", null, _book)], null);
+        _scan.Setup(s => s.ScanAsync(It.Is<byte[]>(b => b.SequenceEqual(bytes)), ScanMode.Shelf, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceResult<ScanResultDto>.Success(scanResult));
+
+        var result = await _controller.Scan(FormFile(bytes), ScanMode.Shelf, CancellationToken.None);
+
+        Assert.Same(scanResult, Assert.IsType<OkObjectResult>(result.Result).Value);
+    }
+
+    [Fact]
+    public async Task Scan_EmptyFile_ReturnsBadRequestWithoutScanning()
+    {
+        var result = await _controller.Scan(FormFile([]), ScanMode.Single, CancellationToken.None);
+
+        ControllerTestHelpers.AssertProblem(result.Result, StatusCodes.Status400BadRequest);
+        _scan.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Scan_NotConfigured_ReturnsServiceUnavailable()
+    {
+        _scan.Setup(s => s.ScanAsync(It.IsAny<byte[]>(), It.IsAny<ScanMode>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceResult<ScanResultDto>.Failure(ServiceErrorType.Unavailable, BookScanService.NotConfiguredMessage));
+
+        var result = await _controller.Scan(FormFile([1, 2, 3]), ScanMode.Single, CancellationToken.None);
+
+        ControllerTestHelpers.AssertProblem(result.Result, StatusCodes.Status503ServiceUnavailable);
+    }
+
+    private static FormFile FormFile(byte[] bytes) => new(new MemoryStream(bytes), 0, bytes.Length, "image", "photo.jpg");
 
     [Fact]
     public async Task CreateBook_Invalid_ReturnsBadRequest()

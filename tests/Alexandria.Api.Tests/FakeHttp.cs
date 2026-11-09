@@ -15,10 +15,12 @@ internal sealed class FakeHttp
     {
         _handler.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
-            .Returns<HttpRequestMessage, CancellationToken>((request, _) =>
+            .Returns<HttpRequestMessage, CancellationToken>(async (request, _) =>
             {
                 Requests.Add(request);
-                return Task.FromResult(_responses.Dequeue()());
+                // Callers dispose requests after sending, so capture bodies now.
+                RequestBodies.Add(request.Content is null ? null : await request.Content.ReadAsStringAsync());
+                return _responses.Dequeue()();
             });
         Client = new HttpClient(_handler.Object);
     }
@@ -26,6 +28,8 @@ internal sealed class FakeHttp
     public HttpClient Client { get; }
 
     public List<HttpRequestMessage> Requests { get; } = [];
+
+    public List<string?> RequestBodies { get; } = [];
 
     public FakeHttp Json(string json)
     {

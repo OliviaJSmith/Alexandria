@@ -7,6 +7,9 @@ public enum ServiceErrorType
     Forbidden,
     NotFound,
     Conflict,
+
+    /// <summary>A dependency (e.g. Azure AI) is not configured or not responding.</summary>
+    Unavailable,
 }
 
 public sealed record ServiceError(ServiceErrorType Type, string Message);

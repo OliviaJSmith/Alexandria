@@ -16,6 +16,9 @@ public interface ILibraryRepository
     /// <summary>A copy in the given library, with its <see cref="Book"/> loaded.</summary>
     Task<LibraryBook?> GetLibraryBookAsync(Guid libraryId, Guid libraryBookId, CancellationToken cancellationToken = default);
 
+    /// <summary>A copy by id alone, with its <see cref="Book"/> and <see cref="Library"/> loaded.</summary>
+    Task<LibraryBook?> GetLibraryBookByIdAsync(Guid libraryBookId, CancellationToken cancellationToken = default);
+
     Task<bool> ContainsBookAsync(Guid libraryId, Guid bookId, CancellationToken cancellationToken = default);
 
     /// <summary>Copies in any of the owner's libraries with the given status, with their <see cref="Book"/> loaded.</summary>

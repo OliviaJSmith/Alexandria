@@ -40,6 +40,14 @@ public class LibraryRepository(AlexandriaDbContext context) : ILibraryRepository
             .SingleOrDefaultAsync(lb => lb.Id == libraryBookId && lb.LibraryId == libraryId, cancellationToken);
     }
 
+    public async Task<LibraryBook?> GetLibraryBookByIdAsync(Guid libraryBookId, CancellationToken cancellationToken = default)
+    {
+        return await context.LibraryBooks
+            .Include(lb => lb.Book)
+            .Include(lb => lb.Library)
+            .SingleOrDefaultAsync(lb => lb.Id == libraryBookId, cancellationToken);
+    }
+
     public async Task<bool> ContainsBookAsync(Guid libraryId, Guid bookId, CancellationToken cancellationToken = default)
     {
         return await context.LibraryBooks.AnyAsync(lb => lb.LibraryId == libraryId && lb.BookId == bookId, cancellationToken);

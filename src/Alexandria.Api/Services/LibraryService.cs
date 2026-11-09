@@ -8,6 +8,7 @@ public class LibraryService(
     ILibraryRepository libraries,
     IBookRepository books,
     IFriendshipRepository friendships,
+    ILoanRepository loans,
     TimeProvider timeProvider) : ILibraryService
 {
     public const string LibraryNotFoundMessage = "Library not found.";
@@ -17,6 +18,7 @@ public class LibraryService(
     public const string DuplicateBookMessage = "This book is already in the library. Set forceAdd to add another copy.";
     public const string BookLentOutMessage = "This book is lent out. Mark it returned before removing or moving it.";
     public const string NameRequiredMessage = "Library name cannot be blank.";
+    public const string OnActiveLoanMessage = "This book is on loan through Alexandria. Mark it returned from Loans instead.";
 
     public async Task<ServiceResult<IReadOnlyList<LibraryDto>>> GetMyLibrariesAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -156,8 +158,14 @@ public class LibraryService(
             return ServiceResult<LibraryBookDto>.Failure(error!.Type, error.Message);
         }
 
-        if (request.Status is { } status)
+        if (request.Status is { } status && status != copy.Status)
         {
+            // A loan tracked in Alexandria owns the copy's status until it's returned.
+            if (await loans.HasActiveLoanAsync(copy.Id, cancellationToken))
+            {
+                return ServiceResult<LibraryBookDto>.Failure(ServiceErrorType.Conflict, OnActiveLoanMessage);
+            }
+
             copy.Status = status;
         }
 
