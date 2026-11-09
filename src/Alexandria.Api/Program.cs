@@ -1,7 +1,9 @@
 using Alexandria.Api.Data;
 using Alexandria.Api.Options;
 using Alexandria.Api.Repositories;
+using System.Text.Json.Serialization;
 using Alexandria.Api.Services;
+using Alexandria.Api.Services.BookCatalog;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -29,6 +31,9 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 builder.Services.AddDbContext<AlexandriaDbContext>(options => options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ILibraryRepository, LibraryRepository>();
+builder.Services.AddScoped<IBookRepository, BookRepository>();
+builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 
 // ---------- Services ----------
 
@@ -38,7 +43,21 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IUsernameGenerator, UsernameGenerator>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ILibraryService, LibraryService>();
+builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddHttpClient<IGoogleTokenValidator, GoogleTokenValidator>(client => client.Timeout = TimeSpan.FromSeconds(10));
+
+// External book catalogs, queried in registration order: Open Library first, Google Books as fallback.
+builder.Services.Configure<GoogleBooksOptions>(builder.Configuration.GetSection(GoogleBooksOptions.SectionName));
+builder.Services.AddHttpClient<OpenLibraryCatalogSource>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Alexandria/1.0");
+});
+builder.Services.AddHttpClient<GoogleBooksCatalogSource>(client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddTransient<IBookCatalogSource>(sp => sp.GetRequiredService<OpenLibraryCatalogSource>());
+builder.Services.AddTransient<IBookCatalogSource>(sp => sp.GetRequiredService<GoogleBooksCatalogSource>());
+builder.Services.AddScoped<IBookLookupService, BookLookupService>();
 
 // ---------- Authentication ----------
 
@@ -66,7 +85,8 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();

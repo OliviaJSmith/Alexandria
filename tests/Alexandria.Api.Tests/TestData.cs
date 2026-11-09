@@ -28,6 +28,38 @@ internal static class TestData
         TokenLifetime = TimeSpan.FromDays(7),
     };
 
+    public static Library Library(Guid ownerId, bool isPublic = false, string name = "Living Room") => new()
+    {
+        Id = Guid.NewGuid(),
+        OwnerId = ownerId,
+        Name = name,
+        IsPublic = isPublic,
+        CreatedAt = Now.AddDays(-10),
+        UpdatedAt = Now.AddDays(-10),
+    };
+
+    public static Book Book(string title = "The Hobbit", string? isbn = "9780547928227") => new()
+    {
+        Id = Guid.NewGuid(),
+        Title = title,
+        Author = "J.R.R. Tolkien",
+        Isbn = isbn,
+        Genre = "Fantasy",
+        CreatedAt = Now.AddDays(-20),
+        UpdatedAt = Now.AddDays(-20),
+    };
+
+    public static LibraryBook Copy(Library library, Book book, LibraryBookStatus status = LibraryBookStatus.Available) => new()
+    {
+        Id = Guid.NewGuid(),
+        LibraryId = library.Id,
+        Library = library,
+        BookId = book.Id,
+        Book = book,
+        Status = status,
+        AddedAt = Now.AddDays(-5),
+    };
+
     public static User User(string userName = "QuietScribe7") => new()
     {
         Id = Guid.NewGuid(),

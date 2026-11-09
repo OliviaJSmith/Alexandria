@@ -12,11 +12,27 @@ public abstract class ApiControllerBase : ControllerBase
     protected Guid? CurrentUserId =>
         Guid.TryParse(User.FindFirstValue(JwtRegisteredClaimNames.Sub), out var id) ? id : null;
 
-    protected ActionResult<T> ToActionResult<T>(ServiceResult<T> result)
+    /// <summary>
+    /// Runs a service call for the signed-in user and maps its result; 401 if the token has no valid user id.
+    /// </summary>
+    protected async Task<ActionResult<T>> ForCurrentUserAsync<T>(
+        Func<Guid, Task<ServiceResult<T>>> action,
+        Func<T, ActionResult>? onSuccess = null)
+    {
+        if (CurrentUserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await action(userId), onSuccess);
+    }
+
+    /// <summary>Maps a service result to 200 OK (or <paramref name="onSuccess"/>), or a problem response for its error.</summary>
+    protected ActionResult<T> ToActionResult<T>(ServiceResult<T> result, Func<T, ActionResult>? onSuccess = null)
     {
         if (result.IsSuccess)
         {
-            return Ok(result.Value);
+            return onSuccess is null ? Ok(result.Value) : onSuccess(result.Value!);
         }
 
         var error = result.Error!;

@@ -14,13 +14,6 @@ public class UsersController(IUserService userService) : ApiControllerBase
     [ProducesResponseType<UserDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken)
-    {
-        if (CurrentUserId is not { } userId)
-        {
-            return Unauthorized();
-        }
-
-        return ToActionResult(await userService.GetByIdAsync(userId, cancellationToken));
-    }
+    public Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken) =>
+        ForCurrentUserAsync(userId => userService.GetByIdAsync(userId, cancellationToken));
 }
