@@ -3,7 +3,7 @@
  * Override the API URL with EXPO_PUBLIC_API_URL (e.g. http://10.0.2.2:5130 for an Android emulator).
  */
 const developmentApiUrl = 'http://localhost:5130';
-const productionApiUrl = 'https://app-6wlvh7mhd5ple.azurewebsites.net';
+const productionApiUrl = 'https://app-uunpz277ms5jq.azurewebsites.net';
 
 export const config = {
   apiUrl: process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? developmentApiUrl : productionApiUrl),

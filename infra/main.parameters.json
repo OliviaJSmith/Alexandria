@@ -10,6 +10,8 @@
     "jwtSigningKey": { "value": "${JWT_SIGNING_KEY}" },
     "googleClientId": { "value": "${GOOGLE_CLIENT_ID}" },
     "openAiModelName": { "value": "${OPENAI_MODEL_NAME=gpt-4o-mini}" },
-    "openAiModelVersion": { "value": "${OPENAI_MODEL_VERSION=2024-07-18}" }
+    "openAiModelVersion": { "value": "${OPENAI_MODEL_VERSION=2024-07-18}" },
+    "appServiceSku": { "value": "${APP_SERVICE_SKU=F1}" },
+    "postgresLocation": { "value": "${POSTGRES_LOCATION}" }
   }
 }

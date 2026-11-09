@@ -32,7 +32,7 @@ Local secrets (connection string, JWT signing key) go in .NET user-secrets for `
 
 ## Azure
 
-Resources live in the `alexandria-rg` resource group (West US): App Service (API), Static Web Apps (web build), Azure Database for PostgreSQL, Key Vault, Azure OpenAI and Azure Vision. The API reaches Key Vault, OpenAI and Vision with its managed identity; no API keys are stored.
+Resources live in the `alexandria-rg` resource group: App Service (API), Key Vault, Azure OpenAI and Azure Vision in West US 3; Static Web Apps (web build) and Azure Database for PostgreSQL in West US 2. The API reads its secrets from Key Vault with its managed identity; OpenAI and Vision API keys are stored only in Key Vault (see the secrets rule in CLAUDE.md).
 
 ```bash
 azd provision
@@ -43,3 +43,15 @@ azd deploy
 ```
 
 The azd environment (`.azure/`, git-ignored) holds the generated Postgres admin password and JWT signing key.
+
+Hosting knobs (set with `azd env set`): `APP_SERVICE_SKU` (default `F1`, the Free tier; use `B1` for always-on) and `POSTGRES_LOCATION` (defaults to the main region; set it when the subscription can't create PostgreSQL there).
+
+If `azd deploy web` fails while uploading, build and upload the site directly (requires Node.js 22.20 or later):
+
+```bash
+cd src/Alexandria.App && npm run build
+```
+
+```bash
+SWA_CLI_DEPLOYMENT_TOKEN=$(az staticwebapp secrets list -n <static-web-app-name> -g alexandria-rg --query properties.apiKey -o tsv) npx @azure/static-web-apps-cli deploy ./dist --env production --no-use-keychain
+```

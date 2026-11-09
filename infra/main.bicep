@@ -12,6 +12,9 @@ param location string
 @description('Region for the Static Web App, which supports fewer regions than the other resources.')
 param staticWebAppLocation string = 'westus2'
 
+@description('Region for the PostgreSQL server. Defaults to the main region; set when the subscription cannot create PostgreSQL there.')
+param postgresLocation string = ''
+
 @description('Name of the resource group to create.')
 param resourceGroupName string = 'alexandria-rg'
 
@@ -38,6 +41,9 @@ param openAiModelName string
 @description('Version of the Azure OpenAI model to deploy.')
 param openAiModelVersion string
 
+@description('App Service plan size for the API. F1 (Free) for development; B1 or larger for always-on hosting.')
+param appServiceSku string = 'F1'
+
 var tags = { 'azd-env-name': environmentName }
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -53,6 +59,7 @@ module resources 'resources.bicep' = {
     environmentName: environmentName
     location: location
     staticWebAppLocation: staticWebAppLocation
+    postgresLocation: empty(postgresLocation) ? location : postgresLocation
     tags: tags
     principalId: principalId
     postgresAdminLogin: postgresAdminLogin
@@ -61,6 +68,7 @@ module resources 'resources.bicep' = {
     googleClientId: googleClientId
     openAiModelName: openAiModelName
     openAiModelVersion: openAiModelVersion
+    appServiceSku: appServiceSku
   }
 }
 

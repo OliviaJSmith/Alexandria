@@ -1,6 +1,7 @@
 param environmentName string
 param location string
 param staticWebAppLocation string
+param postgresLocation string
 param tags object
 param principalId string
 param postgresAdminLogin string
@@ -14,6 +15,12 @@ param jwtSigningKey string
 param googleClientId string
 param openAiModelName string
 param openAiModelVersion string
+
+@allowed([ 'F1', 'B1', 'B2', 'B3', 'S1', 'P0v3', 'P1v3' ])
+param appServiceSku string
+
+// Free (F1) has no always-on: the API sleeps when idle and cold-starts on the next request.
+var isFreeTier = appServiceSku == 'F1'
 
 var token = toLower(uniqueString(subscription().id, resourceGroup().id, environmentName))
 var databaseName = 'alexandria'
@@ -97,9 +104,11 @@ resource visionKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
 
 // ---------- PostgreSQL ----------
 
+// Can differ from the main region: some subscriptions can't create PostgreSQL in every region.
+// The region suffix also avoids name clashes with a failed attempt in another region.
 resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
-  name: 'psql-${token}'
-  location: location
+  name: postgresLocation == location ? 'psql-${token}' : 'psql-${token}-${postgresLocation}'
+  location: postgresLocation
   tags: tags
   sku: { name: 'Standard_B1ms', tier: 'Burstable' }
   properties: {
@@ -171,7 +180,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
   location: location
   tags: tags
   kind: 'linux'
-  sku: { name: 'B1' }
+  sku: { name: appServiceSku }
   properties: { reserved: true }
 }
 
@@ -195,7 +204,7 @@ resource api 'Microsoft.Web/sites@2024-04-01' = {
     httpsOnly: true
     siteConfig: {
       linuxFxVersion: 'DOTNETCORE|10.0'
-      alwaysOn: true
+      alwaysOn: !isFreeTier
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       cors: {
