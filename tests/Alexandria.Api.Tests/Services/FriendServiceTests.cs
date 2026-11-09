@@ -43,6 +43,59 @@ public class FriendServiceTests
         Assert.False(result.Value![1].IsIncoming);
     }
 
+    [Theory]
+    [InlineData("jane")]      // part of the real name, any case
+    [InlineData("SMITH")]
+    [InlineData("@book")]     // username, with a leading @
+    [InlineData("  worm_9 ")] // surrounding spaces are ignored
+    public async Task GetFriends_WithSearch_MatchesUserNameOrRealName(string search)
+    {
+        var jane = TestData.User("BookWorm_9");
+        jane.DisplayName = "Jane Smith";
+        var other = TestData.User("Other_Reader");
+        other.DisplayName = "Pat Jones";
+        _friendships.Setup(f => f.GetForUserAsync(_me.Id, FriendshipStatus.Accepted, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Friendship(_me, jane, FriendshipStatus.Accepted), Friendship(other, _me, FriendshipStatus.Accepted)]);
+
+        var result = await _service.GetFriendsAsync(_me.Id, search);
+
+        Assert.Equal("BookWorm_9", Assert.Single(result.Value!).User.UserName);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GetFriends_BlankSearch_ReturnsEveryone(string? search)
+    {
+        _friendships.Setup(f => f.GetForUserAsync(_me.Id, FriendshipStatus.Accepted, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Friendship(_me, TestData.User("One"), FriendshipStatus.Accepted), Friendship(TestData.User("Two"), _me, FriendshipStatus.Accepted)]);
+
+        var result = await _service.GetFriendsAsync(_me.Id, search);
+
+        Assert.Equal(2, result.Value!.Count);
+    }
+
+    [Fact]
+    public async Task GetFriends_NoMatch_ReturnsEmpty()
+    {
+        _friendships.Setup(f => f.GetForUserAsync(_me.Id, FriendshipStatus.Accepted, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Friendship(_me, _them, FriendshipStatus.Accepted)]);
+
+        var result = await _service.GetFriendsAsync(_me.Id, "nobody");
+
+        Assert.Empty(result.Value!);
+    }
+
+    [Fact]
+    public async Task GetFriends_SearchTooLong_ReturnsValidationError()
+    {
+        var result = await _service.GetFriendsAsync(_me.Id, new string('a', FriendService.MaxFriendSearchLength + 1));
+
+        Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
+        _friendships.Verify(f => f.GetForUserAsync(It.IsAny<Guid>(), It.IsAny<FriendshipStatus>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task GetRequests_SplitsIncomingAndOutgoing()
     {

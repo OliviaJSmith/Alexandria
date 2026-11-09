@@ -13,6 +13,8 @@ public class FriendService(
     public const int MinSearchLength = 2;
     public const int MaxSearchResults = 20;
     public const string SearchTooShortMessage = "Type at least 2 characters of a username.";
+    public const int MaxFriendSearchLength = 100;
+    public const string FriendSearchTooLongMessage = "Search must be 100 characters or fewer.";
     public const string UserNotFoundMessage = "No user has that username.";
     public const string CannotFriendSelfMessage = "You can't send a friend request to yourself.";
     public const string AlreadyFriendsMessage = "You're already friends.";
@@ -21,11 +23,22 @@ public class FriendService(
     public const string FriendshipNotFoundMessage = "Friend request not found.";
     public const string NotFriendsMessage = "You aren't friends with this person.";
 
-    public async Task<ServiceResult<IReadOnlyList<FriendshipDto>>> GetFriendsAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<FriendshipDto>>> GetFriendsAsync(
+        Guid userId,
+        string? search = null,
+        CancellationToken cancellationToken = default)
     {
+        var term = search?.Trim().TrimStart('@') ?? string.Empty;
+        if (term.Length > MaxFriendSearchLength)
+        {
+            return ServiceResult<IReadOnlyList<FriendshipDto>>.Failure(ServiceErrorType.Validation, FriendSearchTooLongMessage);
+        }
+
+        // A user's friend list is small, so it is filtered in memory after the one query that loads it.
         var accepted = await friendships.GetForUserAsync(userId, FriendshipStatus.Accepted, cancellationToken);
         var friends = accepted
             .Select(f => FriendshipDto.For(f, userId))
+            .Where(f => term.Length == 0 || MatchesFriend(f.User, term))
             .OrderBy(f => f.User.UserName, StringComparer.OrdinalIgnoreCase)
             .ToList();
         return ServiceResult<IReadOnlyList<FriendshipDto>>.Success(friends);
@@ -183,6 +196,11 @@ public class FriendService(
         await friendships.SaveChangesAsync(cancellationToken);
         return ServiceResult<FriendshipDto>.Success(FriendshipDto.For(friendship, userId));
     }
+
+    /// <summary>Case-insensitive "contains" on the username or the real (display) name.</summary>
+    private static bool MatchesFriend(UserSummaryDto user, string term) =>
+        user.UserName.Contains(term, StringComparison.OrdinalIgnoreCase)
+        || user.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     private static UserRelationship RelationshipOf(Friendship? friendship, Guid viewerId) => friendship?.Status switch
     {

@@ -9,7 +9,11 @@ namespace Alexandria.Api.Services;
 /// </summary>
 public interface IFriendService
 {
-    Task<ServiceResult<IReadOnlyList<FriendshipDto>>> GetFriendsAsync(Guid userId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// The caller's friends, sorted by username. With <paramref name="search"/>, only friends whose username or
+    /// real name contains it (case-insensitive; a leading @ is ignored).
+    /// </summary>
+    Task<ServiceResult<IReadOnlyList<FriendshipDto>>> GetFriendsAsync(Guid userId, string? search = null, CancellationToken cancellationToken = default);
 
     Task<ServiceResult<FriendRequestsDto>> GetRequestsAsync(Guid userId, CancellationToken cancellationToken = default);
 

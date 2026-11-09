@@ -56,7 +56,9 @@ export function createAlexandriaApi(client: ApiClient) {
     checkUserName: (userName: string) =>
       client.get<UserNameAvailability>(`/api/users/check-username?userName=${encodeURIComponent(userName)}`),
 
-    getFriends: () => client.get<Friendship[]>('/api/friends'),
+    /** Your friends; with `search`, only those whose username or real name contains it. */
+    getFriends: (search?: string) =>
+      client.get<Friendship[]>(search ? `/api/friends?search=${encodeURIComponent(search)}` : '/api/friends'),
     getFriendRequests: () => client.get<FriendRequests>('/api/friends/requests'),
     searchUsers: (userName: string) => client.get<UserSearchResult[]>(`/api/friends/search?userName=${encodeURIComponent(userName)}`),
     sendFriendRequest: (userName: string) => client.post<Friendship>('/api/friends/requests', { userName }),

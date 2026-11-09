@@ -10,11 +10,12 @@ namespace Alexandria.Api.Controllers;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public class FriendsController(IFriendService friendService) : ApiControllerBase
 {
-    /// <summary>The signed-in user's friends.</summary>
+    /// <summary>The signed-in user's friends, optionally filtered by username or real name.</summary>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<FriendshipDto>>(StatusCodes.Status200OK)]
-    public Task<ActionResult<IReadOnlyList<FriendshipDto>>> GetFriends(CancellationToken cancellationToken) =>
-        ForCurrentUserAsync(userId => friendService.GetFriendsAsync(userId, cancellationToken));
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<ActionResult<IReadOnlyList<FriendshipDto>>> GetFriends([FromQuery] string? search, CancellationToken cancellationToken) =>
+        ForCurrentUserAsync(userId => friendService.GetFriendsAsync(userId, search, cancellationToken));
 
     /// <summary>Pending requests: incoming (to accept or decline) and outgoing (to cancel).</summary>
     [HttpGet("requests")]

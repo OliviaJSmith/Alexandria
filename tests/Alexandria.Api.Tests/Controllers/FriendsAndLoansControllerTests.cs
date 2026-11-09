@@ -27,10 +27,30 @@ public class FriendsControllerTests
     [Fact]
     public async Task GetFriends_ReturnsOk()
     {
-        _service.Setup(s => s.GetFriendsAsync(_userId, It.IsAny<CancellationToken>()))
+        _service.Setup(s => s.GetFriendsAsync(_userId, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ServiceResult<IReadOnlyList<FriendshipDto>>.Success([_friendship]));
 
-        Assert.IsType<OkObjectResult>((await _controller.GetFriends(CancellationToken.None)).Result);
+        Assert.IsType<OkObjectResult>((await _controller.GetFriends(null, CancellationToken.None)).Result);
+    }
+
+    [Fact]
+    public async Task GetFriends_PassesSearchThrough()
+    {
+        _service.Setup(s => s.GetFriendsAsync(_userId, "jane", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceResult<IReadOnlyList<FriendshipDto>>.Success([_friendship]));
+
+        Assert.IsType<OkObjectResult>((await _controller.GetFriends("jane", CancellationToken.None)).Result);
+    }
+
+    [Fact]
+    public async Task GetFriends_InvalidSearch_ReturnsBadRequest()
+    {
+        _service.Setup(s => s.GetFriendsAsync(_userId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceResult<IReadOnlyList<FriendshipDto>>.Failure(ServiceErrorType.Validation, "too long"));
+
+        var result = await _controller.GetFriends(new string('a', 101), CancellationToken.None);
+
+        ControllerTestHelpers.AssertProblem(result.Result, StatusCodes.Status400BadRequest);
     }
 
     [Fact]
