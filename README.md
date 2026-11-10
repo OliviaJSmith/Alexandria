@@ -30,6 +30,17 @@ npm run web
 
 Local secrets (connection string, JWT signing key) go in .NET user-secrets for `src/Alexandria.Api`, never in committed files.
 
+## Notifications
+
+When a friend asks to borrow a book, the lender gets a Web Push notification on every browser where they turned notifications on (Profile → Notifications). The API sends them through [Lib.Net.Http.WebPush](https://github.com/tpeczek/Lib.Net.Http.WebPush), using standard `aes128gcm` encryption and VAPID. `public/sw.js` displays them.
+
+- Keys: a VAPID key pair (P-256, base64url raw keys) in `WebPush:PublicKey`, `WebPush:PrivateKey` and `WebPush:Subject` (an `https:` or `mailto:` URL).
+  - Locally they go in user-secrets.
+  - In Azure they come from the azd environment (`WEBPUSH_PUBLIC_KEY`, `WEBPUSH_PRIVATE_KEY`); the private key is stored only in Key Vault.
+  - Without keys, notifications are off and the Profile card is hidden.
+- Android, Windows, macOS: works in Chrome, Edge and Firefox.
+- iPhone/iPad (iOS 16.4+): only after **Share → Add to Home Screen**, opening Alexandria from that icon.
+
 ## Azure
 
 Resources live in the `alexandria-rg` resource group: App Service (API), Key Vault, Azure OpenAI and Azure Vision in West US 3; Static Web Apps (web build) and Azure Database for PostgreSQL in West US 2. The API reads its secrets from Key Vault with its managed identity; OpenAI and Vision API keys are stored only in Key Vault (see the secrets rule in CLAUDE.md).

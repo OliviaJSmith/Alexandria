@@ -1,6 +1,7 @@
 import { Image, Text, View } from 'react-native';
 import { useAuth, useSignedIn } from '../../auth/AuthProvider';
 import { Button } from '../../components/Button';
+import { NotificationsCard } from '../../components/NotificationsCard';
 import { Screen } from '../../components/Screen';
 import { UserNameForm } from '../../components/UserNameForm';
 import { cards } from '../../styles/cards';
@@ -30,6 +31,8 @@ export default function ProfileScreen() {
       </View>
 
       <UserNameForm />
+
+      <NotificationsCard />
 
       <View style={cards.card}>
         <Text style={text.label}>Beta</Text>

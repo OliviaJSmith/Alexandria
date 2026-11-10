@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { type AlexandriaApi, createAlexandriaApi } from '../api/alexandria';
 import { createApiClient } from '../api/client';
+import { disableQuietly } from '../notifications/webPush';
 import type { User } from '../api/types';
 import { type Session, sessionStorage } from './sessionStorage';
 
@@ -83,7 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [api, startSession],
   );
 
-  const signOut = useCallback(() => endSession(), [endSession]);
+  const signOut = useCallback(async () => {
+    // While still signed in, unsubscribe this browser so a shared device stops getting this user's notifications.
+    await disableQuietly(api);
+    await endSession();
+  }, [api, endSession]);
 
   const updateUser = useCallback(
     async (user: User) => {

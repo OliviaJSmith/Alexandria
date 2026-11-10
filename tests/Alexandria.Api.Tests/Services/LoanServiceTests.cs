@@ -2,6 +2,7 @@ using Alexandria.Api.Dtos;
 using Alexandria.Api.Models;
 using Alexandria.Api.Repositories;
 using Alexandria.Api.Services;
+using Alexandria.Api.Services.Notifications;
 using Moq;
 
 namespace Alexandria.Api.Tests.Services;
@@ -12,6 +13,7 @@ public class LoanServiceTests
     private readonly Mock<ILibraryRepository> _libraries = new();
     private readonly Mock<IFriendshipRepository> _friendships = new();
     private readonly Mock<IUserRepository> _users = new();
+    private readonly Mock<INotificationService> _notifications = new();
     private readonly LoanService _service;
 
     private readonly User _owner = TestData.User("Owner");
@@ -28,7 +30,7 @@ public class LoanServiceTests
         _friendships.Setup(f => f.AreFriendsAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _friendships.Setup(f => f.AreFriendsAsync(_owner.Id, _friend.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _loans.Setup(l => l.GetPendingForCopyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
-        _service = new LoanService(_loans.Object, _libraries.Object, _friendships.Object, _users.Object, TestData.TimeProviderAt(TestData.Now).Object);
+        _service = new LoanService(_loans.Object, _libraries.Object, _friendships.Object, _users.Object, _notifications.Object, TestData.TimeProviderAt(TestData.Now).Object);
     }
 
     // ---------- List ----------
@@ -154,6 +156,38 @@ public class LoanServiceTests
         Assert.Equal(_owner.Id, added.LenderId);
         Assert.Equal(LibraryBookStatus.Available, copy.Status);
         Assert.Equal(_owner.Id, result.Value!.Lender.Id);
+    }
+
+    [Fact]
+    public async Task Request_Succeeds_NotifiesTheLender()
+    {
+        var copy = Copy(isPublic: true);
+
+        await _service.RequestAsync(_friend.Id, new BorrowRequest { LibraryBookId = copy.Id });
+
+        _notifications.Verify(n => n.NotifyBorrowRequestAsync(
+            It.Is<Loan>(l => l.LenderId == _owner.Id && l.Borrower == _friend && l.LibraryBook == copy),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Request_Rejected_DoesNotNotify()
+    {
+        var copy = Copy(isPublic: false);
+
+        await _service.RequestAsync(_friend.Id, new BorrowRequest { LibraryBookId = copy.Id });
+
+        _notifications.Verify(n => n.NotifyBorrowRequestAsync(It.IsAny<Loan>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Lend_DoesNotSendBorrowRequestNotification()
+    {
+        var copy = Copy();
+
+        await _service.LendAsync(_owner.Id, new LendBookRequest { LibraryBookId = copy.Id, BorrowerId = _friend.Id });
+
+        _notifications.Verify(n => n.NotifyBorrowRequestAsync(It.IsAny<Loan>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

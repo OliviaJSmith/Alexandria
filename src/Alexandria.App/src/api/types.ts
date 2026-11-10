@@ -130,3 +130,9 @@ export type UpdateLibraryBookRequest = {
   loanNote?: string;
   genre?: string;
 };
+
+/** The VAPID public key (base64url) browsers need to subscribe to push. */
+export type WebPushKey = { publicKey: string };
+
+/** A browser push subscription, as PushSubscription.toJSON() gives it. */
+export type PushSubscriptionRequest = { endpoint: string; p256dh: string; auth: string };

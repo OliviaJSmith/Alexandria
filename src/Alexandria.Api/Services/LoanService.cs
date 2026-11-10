@@ -1,6 +1,7 @@
 using Alexandria.Api.Dtos;
 using Alexandria.Api.Models;
 using Alexandria.Api.Repositories;
+using Alexandria.Api.Services.Notifications;
 
 namespace Alexandria.Api.Services;
 
@@ -9,6 +10,7 @@ public class LoanService(
     ILibraryRepository libraries,
     IFriendshipRepository friendships,
     IUserRepository users,
+    INotificationService notifications,
     TimeProvider timeProvider) : ILoanService
 {
     public const string CopyNotFoundMessage = "Book not found.";
@@ -111,6 +113,7 @@ public class LoanService(
         loan.Borrower = await users.GetByIdAsync(borrowerId, cancellationToken);
         loans.Add(loan);
         await loans.SaveChangesAsync(cancellationToken);
+        await notifications.NotifyBorrowRequestAsync(loan, cancellationToken);
         return ServiceResult<LoanDto>.Success(LoanDto.FromLoan(loan, now));
     }
 

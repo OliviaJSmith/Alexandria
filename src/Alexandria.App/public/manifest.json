@@ -1,0 +1,18 @@
+{
+  "name": "Alexandria",
+  "short_name": "Alexandria",
+  "description": "Your home library: catalog books and lend them to friends.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#2f5d50",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

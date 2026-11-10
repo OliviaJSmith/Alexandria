@@ -4,6 +4,7 @@ using Alexandria.Api.Repositories;
 using System.Text.Json.Serialization;
 using Alexandria.Api.Services;
 using Alexandria.Api.Services.BookCatalog;
+using Alexandria.Api.Services.Notifications;
 using Alexandria.Api.Services.Scanning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +37,7 @@ builder.Services.AddScoped<ILibraryRepository, LibraryRepository>();
 builder.Services.AddScoped<IBookRepository, BookRepository>();
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<ILoanRepository, LoanRepository>();
+builder.Services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
 
 // ---------- Services ----------
 
@@ -69,6 +71,11 @@ builder.Services.Configure<AzureOpenAIOptions>(builder.Configuration.GetSection(
 builder.Services.AddHttpClient<ITextRecognizer, AzureVisionTextRecognizer>(client => client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHttpClient<IBookTextInterpreter, AzureOpenAIBookTextInterpreter>(client => client.Timeout = TimeSpan.FromSeconds(90));
 builder.Services.AddScoped<IBookScanService, BookScanService>();
+
+// Web Push notifications (e.g. borrow requests). Off when the VAPID keys aren't configured.
+builder.Services.Configure<WebPushOptions>(builder.Configuration.GetSection(WebPushOptions.SectionName));
+builder.Services.AddHttpClient<IWebPushSender, WebPushSender>(client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // ---------- Authentication ----------
 

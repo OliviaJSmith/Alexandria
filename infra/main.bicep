@@ -35,6 +35,13 @@ param jwtSigningKey string
 @description('Google OAuth web client ID used to validate Google sign-ins.')
 param googleClientId string
 
+@description('Web Push (VAPID) public key, base64url. Not secret: browsers need it to subscribe.')
+param webPushPublicKey string
+
+@secure()
+@description('Web Push (VAPID) private key, base64url. Supplied from the azd environment; never committed.')
+param webPushPrivateKey string
+
 @description('Azure OpenAI model to deploy for turning scanned text into book data.')
 param openAiModelName string
 
@@ -66,6 +73,8 @@ module resources 'resources.bicep' = {
     postgresAdminPassword: postgresAdminPassword
     jwtSigningKey: jwtSigningKey
     googleClientId: googleClientId
+    webPushPublicKey: webPushPublicKey
+    webPushPrivateKey: webPushPrivateKey
     openAiModelName: openAiModelName
     openAiModelVersion: openAiModelVersion
     appServiceSku: appServiceSku

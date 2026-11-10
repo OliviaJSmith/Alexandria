@@ -218,6 +218,43 @@ namespace Alexandria.Api.Data.Migrations
                     b.ToTable("Loans");
                 });
 
+            modelBuilder.Entity("Alexandria.Api.Models.PushSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PushSubscriptions");
+                });
+
             modelBuilder.Entity("Alexandria.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -347,6 +384,17 @@ namespace Alexandria.Api.Data.Migrations
                     b.Navigation("Lender");
 
                     b.Navigation("LibraryBook");
+                });
+
+            modelBuilder.Entity("Alexandria.Api.Models.PushSubscription", b =>
+                {
+                    b.HasOne("Alexandria.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Alexandria.Api.Models.Book", b =>

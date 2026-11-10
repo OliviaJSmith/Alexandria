@@ -13,6 +13,11 @@ param postgresAdminPassword string
 param jwtSigningKey string
 
 param googleClientId string
+param webPushPublicKey string
+
+@secure()
+param webPushPrivateKey string
+
 param openAiModelName string
 param openAiModelVersion string
 
@@ -83,6 +88,14 @@ resource jwtSigningKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: 'jwt-signing-key'
   properties: {
     value: jwtSigningKey
+  }
+}
+
+resource webPushPrivateKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'webpush-private-key'
+  properties: {
+    value: webPushPrivateKey
   }
 }
 
@@ -232,6 +245,9 @@ resource apiSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     AzureOpenAI__ApiKey: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=${openAiKeySecret.name})'
     AzureVision__Endpoint: vision.properties.endpoint
     AzureVision__ApiKey: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=${visionKeySecret.name})'
+    WebPush__Subject: 'https://${web.properties.defaultHostname}'
+    WebPush__PublicKey: webPushPublicKey
+    WebPush__PrivateKey: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=${webPushPrivateKeySecret.name})'
   }
 }
 

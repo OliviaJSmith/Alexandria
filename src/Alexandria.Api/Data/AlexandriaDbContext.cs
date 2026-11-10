@@ -17,6 +17,8 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options) 
 
     public DbSet<Friendship> Friendships => Set<Friendship>();
 
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AlexandriaDbContext).Assembly);

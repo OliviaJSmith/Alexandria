@@ -11,6 +11,7 @@ import type {
   Loan,
   LoanStatus,
   PhotoUpload,
+  PushSubscriptionRequest,
   ScanMode,
   ScanResult,
   UpdateLibraryBookRequest,
@@ -18,6 +19,7 @@ import type {
   User,
   UserNameAvailability,
   UserSearchResult,
+  WebPushKey,
 } from './types';
 
 const id = (value: string) => encodeURIComponent(value);
@@ -76,6 +78,11 @@ export function createAlexandriaApi(client: ApiClient) {
     declineLoan: (loanId: string) => client.post<Loan>(`/api/loans/${id(loanId)}/decline`),
     cancelLoan: (loanId: string) => client.post<Loan>(`/api/loans/${id(loanId)}/cancel`),
     returnLoan: (loanId: string) => client.post<Loan>(`/api/loans/${id(loanId)}/return`),
+
+    // Notifications (Web Push)
+    getWebPushKey: () => client.get<WebPushKey>('/api/notifications/web-push-key'),
+    subscribePush: (subscription: PushSubscriptionRequest) => client.post<void>('/api/notifications/subscriptions', subscription),
+    unsubscribePush: (endpoint: string) => client.delete('/api/notifications/subscriptions', { endpoint }),
   };
 }
 
