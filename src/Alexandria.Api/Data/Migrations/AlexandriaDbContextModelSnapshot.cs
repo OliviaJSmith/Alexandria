@@ -187,6 +187,12 @@ namespace Alexandria.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("DueDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("DueTodayReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DueTomorrowReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("LenderId")
                         .HasColumnType("uuid");
 
@@ -214,6 +220,8 @@ namespace Alexandria.Api.Data.Migrations
                     b.HasIndex("BorrowerId", "Status");
 
                     b.HasIndex("LenderId", "Status");
+
+                    b.HasIndex("Status", "DueDate");
 
                     b.ToTable("Loans");
                 });

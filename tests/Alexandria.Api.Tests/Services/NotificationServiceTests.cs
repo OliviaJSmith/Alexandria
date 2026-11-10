@@ -261,6 +261,75 @@ public class NotificationServiceTests
         Assert.Equal("A friend wants to borrow one of your books.", sent!.Body);
     }
 
+    [Fact]
+    public async Task NotifyFriendRequest_SendsToAddressee()
+    {
+        _subscriptions.Setup(s => s.GetForUserAsync(_lender.Id, It.IsAny<CancellationToken>())).ReturnsAsync([Subscription(_lender.Id)]);
+        var sent = CaptureSent();
+
+        await _service.NotifyFriendRequestAsync(new Friendship
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = _borrower.Id,
+            Requester = _borrower,
+            AddresseeId = _lender.Id,
+            Status = FriendshipStatus.Pending,
+        });
+
+        var message = Assert.Single(sent);
+        Assert.Equal("Friend request", message.Title);
+        Assert.Equal($"{_borrower.DisplayName} (@{_borrower.UserName}) wants to be friends.", message.Body);
+        Assert.Equal("/friends", message.Url);
+    }
+
+    [Fact]
+    public async Task NotifyFriendRequest_RequesterNotLoaded_UsesFallbackText()
+    {
+        _subscriptions.Setup(s => s.GetForUserAsync(_lender.Id, It.IsAny<CancellationToken>())).ReturnsAsync([Subscription(_lender.Id)]);
+        var sent = CaptureSent();
+
+        await _service.NotifyFriendRequestAsync(new Friendship { Id = Guid.NewGuid(), RequesterId = _borrower.Id, AddresseeId = _lender.Id });
+
+        Assert.Equal("Someone wants to be friends.", Assert.Single(sent).Body);
+    }
+
+    [Theory]
+    [InlineData(DueReminder.Tomorrow, "Due tomorrow", "Dune is due back to {0} tomorrow.")]
+    [InlineData(DueReminder.Today, "Due today", "Dune is due back to {0} today.")]
+    public async Task NotifyLoanDue_SendsToBorrower(DueReminder reminder, string title, string body)
+    {
+        _subscriptions.Setup(s => s.GetForUserAsync(_borrower.Id, It.IsAny<CancellationToken>())).ReturnsAsync([Subscription(_borrower.Id)]);
+        var sent = CaptureSent();
+
+        await _service.NotifyLoanDueAsync(BorrowRequest("Dune"), reminder);
+
+        var message = Assert.Single(sent);
+        Assert.Equal(title, message.Title);
+        Assert.Equal(string.Format(body, _lender.DisplayName), message.Body);
+        Assert.Equal("/loans", message.Url);
+        _subscriptions.Verify(s => s.GetForUserAsync(_lender.Id, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task NotifyLoanDue_MissingNames_UsesFallbackText()
+    {
+        _subscriptions.Setup(s => s.GetForUserAsync(_borrower.Id, It.IsAny<CancellationToken>())).ReturnsAsync([Subscription(_borrower.Id)]);
+        var sent = CaptureSent();
+
+        await _service.NotifyLoanDueAsync(new Loan { Id = Guid.NewGuid(), LenderId = _lender.Id, BorrowerId = _borrower.Id }, DueReminder.Today);
+
+        Assert.Equal("A book you borrowed is due back to its owner today.", Assert.Single(sent).Body);
+    }
+
+    private List<PushMessage> CaptureSent()
+    {
+        var sent = new List<PushMessage>();
+        _sender.Setup(s => s.SendAsync(It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<PushSubscription, PushMessage, CancellationToken>((_, m, _) => sent.Add(m))
+            .ReturnsAsync(PushSendResult.Sent);
+        return sent;
+    }
+
     private static SubscribePushRequest Request(string endpoint) =>
         new() { Endpoint = endpoint, P256dh = ValidP256dh, Auth = ValidAuth };
 

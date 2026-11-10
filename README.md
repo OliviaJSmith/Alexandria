@@ -32,7 +32,19 @@ Local secrets (connection string, JWT signing key) go in .NET user-secrets for `
 
 ## Notifications
 
-When a friend asks to borrow a book, the lender gets a Web Push notification on every browser where they turned notifications on (Profile → Notifications). The API sends them through [Lib.Net.Http.WebPush](https://github.com/tpeczek/Lib.Net.Http.WebPush), using standard `aes128gcm` encryption and VAPID. `public/sw.js` displays them.
+Users get Web Push notifications on every browser where they turned them on (Profile → Notifications):
+
+- **Borrow request:** the lender, when a friend asks to borrow a book.
+- **Friend request:** the person who was asked.
+- **Due tomorrow / due today:** the borrower of an active loan with a due date. Sent by a daily job (below).
+
+The daily job is `.github/workflows/due-reminders.yml`, a GitHub Actions cron at 15:00 UTC.
+- It calls `POST /api/jobs/due-reminders` with the `X-Job-Key` header.
+- The key is the repository secret `ALEXANDRIA_JOB_KEY`. It must match the API's `Jobs:Key`, which comes from the azd environment's `JOBS_KEY` and is stored in Key Vault (user-secrets locally).
+- "Today" means due within 24 hours, and "tomorrow" means due in 24–48 hours. Each reminder is sent once per loan.
+- GitHub only runs scheduled workflows from the default branch.
+
+The API sends them through [Lib.Net.Http.WebPush](https://github.com/tpeczek/Lib.Net.Http.WebPush), using standard `aes128gcm` encryption and VAPID. `public/sw.js` displays them.
 
 - Keys: a VAPID key pair (P-256, base64url raw keys) in `WebPush:PublicKey`, `WebPush:PrivateKey` and `WebPush:Subject` (an `https:` or `mailto:` URL).
   - Locally they go in user-secrets.

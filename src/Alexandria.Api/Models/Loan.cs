@@ -34,6 +34,12 @@ public class Loan
 
     public DateTimeOffset? ReturnedDate { get; set; }
 
+    /// <summary>When the borrower was sent the "due tomorrow" reminder (null = not yet).</summary>
+    public DateTimeOffset? DueTomorrowReminderSentAt { get; set; }
+
+    /// <summary>When the borrower was sent the "due today" reminder (null = not yet).</summary>
+    public DateTimeOffset? DueTodayReminderSentAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

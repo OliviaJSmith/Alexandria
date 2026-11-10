@@ -77,6 +77,10 @@ builder.Services.Configure<WebPushOptions>(builder.Configuration.GetSection(WebP
 builder.Services.AddHttpClient<IWebPushSender, WebPushSender>(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+// Scheduled jobs (daily due-date reminders), triggered by a GitHub Actions cron with a shared key.
+builder.Services.Configure<JobsOptions>(builder.Configuration.GetSection(JobsOptions.SectionName));
+builder.Services.AddScoped<IDueReminderService, DueReminderService>();
+
 // ---------- Authentication ----------
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();

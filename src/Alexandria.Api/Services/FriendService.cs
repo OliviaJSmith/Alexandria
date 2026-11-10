@@ -1,6 +1,7 @@
 using Alexandria.Api.Dtos;
 using Alexandria.Api.Models;
 using Alexandria.Api.Repositories;
+using Alexandria.Api.Services.Notifications;
 
 namespace Alexandria.Api.Services;
 
@@ -8,6 +9,7 @@ public class FriendService(
     IFriendshipRepository friendships,
     IUserRepository users,
     ILibraryRepository libraries,
+    INotificationService notifications,
     TimeProvider timeProvider) : IFriendService
 {
     public const int MinSearchLength = 2;
@@ -119,6 +121,11 @@ public class FriendService(
 
             existing.UpdatedAt = now;
             await friendships.SaveChangesAsync(cancellationToken);
+            if (existing.Status == FriendshipStatus.Pending)
+            {
+                await notifications.NotifyFriendRequestAsync(existing, cancellationToken);
+            }
+
             return ServiceResult<FriendshipDto>.Success(FriendshipDto.For(existing, userId));
         }
 
@@ -136,6 +143,7 @@ public class FriendService(
         };
         friendships.Add(friendship);
         await friendships.SaveChangesAsync(cancellationToken);
+        await notifications.NotifyFriendRequestAsync(friendship, cancellationToken);
         return ServiceResult<FriendshipDto>.Success(FriendshipDto.For(friendship, userId));
     }
 

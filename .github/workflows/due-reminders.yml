@@ -1,0 +1,35 @@
+# Once a day, asks the API to send borrowers "due tomorrow" / "due today" push reminders.
+# The API is on the Free App Service plan and sleeps when idle, so the call may take a minute to wake it.
+#
+# Needs the repository secret ALEXANDRIA_JOB_KEY (the same value as the API's Jobs:Key, which lives in Key Vault).
+# GitHub only runs scheduled workflows from the default branch.
+name: Due-date reminders
+
+on:
+  schedule:
+    - cron: "0 15 * * *" # 15:00 UTC = 7am Pacific standard time (8am in summer)
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_URL: https://app-uunpz277ms5jq.azurewebsites.net
+    steps:
+      - name: Wake the API
+        run: curl --silent --show-error --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors --output /dev/null "$API_URL/health"
+
+      - name: Send due-date reminders
+        env:
+          JOB_KEY: ${{ secrets.ALEXANDRIA_JOB_KEY }}
+        run: |
+          if [ -z "$JOB_KEY" ]; then
+            echo "::error::The ALEXANDRIA_JOB_KEY repository secret is not set."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 200 --retry 2 --retry-delay 30 \
+            --request POST --header "X-Job-Key: $JOB_KEY" \
+            "$API_URL/api/jobs/due-reminders"

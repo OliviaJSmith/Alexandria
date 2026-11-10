@@ -11,6 +11,7 @@
     "googleClientId": { "value": "${GOOGLE_CLIENT_ID}" },
     "webPushPublicKey": { "value": "${WEBPUSH_PUBLIC_KEY}" },
     "webPushPrivateKey": { "value": "${WEBPUSH_PRIVATE_KEY}" },
+    "jobsKey": { "value": "${JOBS_KEY}" },
     "openAiModelName": { "value": "${OPENAI_MODEL_NAME=gpt-4o-mini}" },
     "openAiModelVersion": { "value": "${OPENAI_MODEL_VERSION=2024-07-18}" },
     "appServiceSku": { "value": "${APP_SERVICE_SKU=F1}" },

@@ -23,6 +23,11 @@ public interface ILoanRepository
 
     Task<IReadOnlyList<Loan>> GetPendingForCopyAsync(Guid libraryBookId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Active loans due between <paramref name="from"/> and <paramref name="to"/> that still have a due reminder to send.
+    /// </summary>
+    Task<IReadOnlyList<Loan>> GetActiveDueBetweenNeedingReminderAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
+
     void Add(Loan loan);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);

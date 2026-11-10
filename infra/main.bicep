@@ -42,6 +42,10 @@ param webPushPublicKey string
 @description('Web Push (VAPID) private key, base64url. Supplied from the azd environment; never committed.')
 param webPushPrivateKey string
 
+@secure()
+@description('Shared key the daily GitHub Actions job sends to the API (X-Job-Key). Supplied from the azd environment; never committed.')
+param jobsKey string
+
 @description('Azure OpenAI model to deploy for turning scanned text into book data.')
 param openAiModelName string
 
@@ -75,6 +79,7 @@ module resources 'resources.bicep' = {
     googleClientId: googleClientId
     webPushPublicKey: webPushPublicKey
     webPushPrivateKey: webPushPrivateKey
+    jobsKey: jobsKey
     openAiModelName: openAiModelName
     openAiModelVersion: openAiModelVersion
     appServiceSku: appServiceSku

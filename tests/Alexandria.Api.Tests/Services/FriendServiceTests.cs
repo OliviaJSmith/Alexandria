@@ -2,6 +2,7 @@ using Alexandria.Api.Dtos;
 using Alexandria.Api.Models;
 using Alexandria.Api.Repositories;
 using Alexandria.Api.Services;
+using Alexandria.Api.Services.Notifications;
 using Moq;
 
 namespace Alexandria.Api.Tests.Services;
@@ -11,6 +12,7 @@ public class FriendServiceTests
     private readonly Mock<IFriendshipRepository> _friendships = new();
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<ILibraryRepository> _libraries = new();
+    private readonly Mock<INotificationService> _notifications = new();
     private readonly FriendService _service;
 
     private readonly User _me = TestData.User("Me_Reader");
@@ -23,7 +25,7 @@ public class FriendServiceTests
         _users.Setup(u => u.GetByNormalizedUserNameAsync("ME_READER", It.IsAny<CancellationToken>())).ReturnsAsync(_me);
         _friendships.Setup(f => f.GetBetweenManyAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        _service = new FriendService(_friendships.Object, _users.Object, _libraries.Object, TestData.TimeProviderAt(TestData.Now).Object);
+        _service = new FriendService(_friendships.Object, _users.Object, _libraries.Object, _notifications.Object, TestData.TimeProviderAt(TestData.Now).Object);
     }
 
     // ---------- Lists ----------
@@ -159,6 +161,7 @@ public class FriendServiceTests
         Assert.Equal(_them.Id, result.Value!.User.Id);
         Assert.False(result.Value.IsIncoming);
         _friendships.Verify(f => f.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(n => n.NotifyFriendRequestAsync(added, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -193,6 +196,7 @@ public class FriendServiceTests
         Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
         Assert.Equal(message, result.Error.Message);
         Assert.Equal(status, existing.Status);
+        _notifications.Verify(n => n.NotifyFriendRequestAsync(It.IsAny<Friendship>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -206,6 +210,8 @@ public class FriendServiceTests
         Assert.Equal(TestData.Now, existing.UpdatedAt);
         Assert.True(result.Value!.IsIncoming);
         _friendships.Verify(f => f.Add(It.IsAny<Friendship>()), Times.Never);
+        // Accepting their request isn't a new request, so they aren't sent a friend-request notification.
+        _notifications.Verify(n => n.NotifyFriendRequestAsync(It.IsAny<Friendship>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -220,6 +226,7 @@ public class FriendServiceTests
         Assert.Equal(_them.Id, existing.AddresseeId);
         Assert.False(result.Value!.IsIncoming);
         Assert.Equal(_them.Id, result.Value.User.Id);
+        _notifications.Verify(n => n.NotifyFriendRequestAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ---------- Respond / remove ----------

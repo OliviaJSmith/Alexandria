@@ -53,6 +53,18 @@ public class LoanRepository(AlexandriaDbContext context) : ILoanRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Loan>> GetActiveDueBetweenNeedingReminderAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        CancellationToken cancellationToken = default)
+    {
+        return await WithDetails()
+            .Where(l => l.Status == LoanStatus.Active
+                && l.DueDate != null && l.DueDate > from && l.DueDate <= to
+                && (l.DueTomorrowReminderSentAt == null || l.DueTodayReminderSentAt == null))
+            .ToListAsync(cancellationToken);
+    }
+
     public void Add(Loan loan)
     {
         context.Loans.Add(loan);

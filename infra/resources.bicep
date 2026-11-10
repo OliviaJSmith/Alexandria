@@ -18,6 +18,9 @@ param webPushPublicKey string
 @secure()
 param webPushPrivateKey string
 
+@secure()
+param jobsKey string
+
 param openAiModelName string
 param openAiModelVersion string
 
@@ -96,6 +99,14 @@ resource webPushPrivateKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' 
   name: 'webpush-private-key'
   properties: {
     value: webPushPrivateKey
+  }
+}
+
+resource jobsKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'jobs-key'
+  properties: {
+    value: jobsKey
   }
 }
 
@@ -248,6 +259,7 @@ resource apiSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     WebPush__Subject: 'https://${web.properties.defaultHostname}'
     WebPush__PublicKey: webPushPublicKey
     WebPush__PrivateKey: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=${webPushPrivateKeySecret.name})'
+    Jobs__Key: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=${jobsKeySecret.name})'
   }
 }
 

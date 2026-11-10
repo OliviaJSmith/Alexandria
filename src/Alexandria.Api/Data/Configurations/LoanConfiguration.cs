@@ -27,5 +27,6 @@ public class LoanConfiguration : IEntityTypeConfiguration<Loan>
 
         builder.HasIndex(l => new { l.LenderId, l.Status });
         builder.HasIndex(l => new { l.BorrowerId, l.Status });
+        builder.HasIndex(l => new { l.Status, l.DueDate });
     }
 }
